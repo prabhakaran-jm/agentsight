@@ -25,6 +25,9 @@ venv/
 env/
 .python-version
 
+# Vendored pip deps (install with: pip install -r requirements.txt -t apps/agentsight/bin/lib)
+apps/agentsight/bin/lib/
+
 # Node (mcp-remote / tooling)
 node_modules/
 .npm/
@@ -52,4 +55,5 @@ htmlcov/
 *.zip
 *.splunk
 
-docs/
+# Accidental self-symlink inside app package
+apps/agentsight/agentsight
