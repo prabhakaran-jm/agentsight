@@ -46,6 +46,29 @@ To enable automatic normalization every 5 minutes:
 # Or set enableSched = 1 in local/savedsearches.conf and restart.
 ```
 
+## Detection rules
+
+| Saved search | Source | Trigger |
+|--------------|--------|---------|
+| **AgentSight - MCP Tool Loop** | `_internal` / `mcp_server` | ≥5 `splunk_run_query` calls in 10m, ≤2 distinct tools |
+| **AgentSight - MCP Index Scope Violation** | `_audit` / `audittrail` | Index outside `lookups/agent_index_allowlist.csv` |
+| **AgentSight - MCP Off-Hours Burst** | `_internal` / `mcp_server` | ≥8 calls between 22:00–06:00 |
+
+**Note:** Splunk MCP Server runs **stateless** — each call gets a new `request_id`, so detections group by `username` + time window, not session ID.
+
+### Demo: trigger Rule 1
+
+```bash
+export SPLUNK_MCP_TOKEN='your-token'
+bash scripts/demo_mcp_burst.sh
+# Then in Splunk Web run: AgentSight - MCP Tool Loop
+```
+
+### Demo: trigger Rule 2
+
+Run an MCP query targeting a forbidden index, e.g. `index=secrets | head 1`, via `splunk_run_query`.
+```
+
 ## App structure
 
 ```
@@ -54,8 +77,8 @@ apps/agentsight/
 │   ├── app.conf
 │   ├── indexes.conf          # index=agentsight
 │   ├── props.conf            # sourcetype definitions
-│   ├── savedsearches.conf    # normalization + detections (detections upcoming)
-│   ├── alert_actions.conf    # agentsight_investigate (upcoming)
+│   ├── savedsearches.conf    # normalization + 3 detection rules
+│   ├── alert_actions.conf    # agentsight_investigate (stub handler; full agent Task 5)
 │   └── commands.conf         # agentsight_explain (upcoming)
 ├── bin/
 │   ├── setup_logging.py
