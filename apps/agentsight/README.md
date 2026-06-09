@@ -7,8 +7,8 @@ Native Splunk app for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.
 ## What it does
 
 - Ingests **real MCP Server audit telemetry** (`index=_internal sourcetype=mcp_server`)
-- Detects agent/MCP-specific misbehavior (tool loops, scope violations, off-hours bursts)
-- Investigates with a **`splunklib.ai` agent** and `| ai` classification
+- Detects agent/MCP-specific misbehavior (tool loops, scope violations, off-hours bursts, data exfiltration SPL)
+- Investigates with a **`splunklib.ai` agent** and `| ai` classification (Foundation-Sec via Ollama — Path A)
 - Async analyst approval on dashboard
 - Re-run agent reasoning from the search bar via `| agentsight_explain`
 
@@ -24,7 +24,7 @@ ln -sf "$(pwd)" /opt/splunk/etc/apps/agentsight
 
 - Splunk Enterprise with MCP Server app (Splunkbase 7931)
 - Splunk AI Toolkit 5.7+ and Python for Scientific Computing
-- Ollama (local dev) or Splunk Hosted Models / Foundation-Sec (demo video)
+- Ollama + Foundation-Sec GGUF (`scripts/setup_foundation_sec_ollama.sh`); optional Splunk Cloud clip (Path B)
 
 See [docs/agentsight-mvp-spec.md](../../docs/agentsight-mvp-spec.md) and [docs/mcp-audit-fieldmap.md](../../docs/mcp-audit-fieldmap.md).
 
@@ -53,6 +53,9 @@ To enable automatic normalization every 5 minutes:
 | **AgentSight - MCP Tool Loop** | `_internal` / `mcp_server` | ≥5 `splunk_run_query` calls in 10m, ≤2 distinct tools |
 | **AgentSight - MCP Index Scope Violation** | `_audit` / `audittrail` | Index outside `lookups/agent_index_allowlist.csv` |
 | **AgentSight - MCP Off-Hours Burst** | `_internal` / `mcp_server` | ≥8 calls between 22:00–06:00 |
+| **AgentSight - MCP Data Exfiltration** | `_audit` / `audittrail` + `mcp_server` join | `outputlookup` / `collect` / `sendemail` in MCP-attributed search |
+
+**Judges:** all detection rules ship with `enableSched = 0`. After MCP activity, open the saved search in Splunk Web and **Run** manually (or enable schedules in Settings).
 
 **Note:** Splunk MCP Server runs **stateless** — each call gets a new `request_id`, so detections group by `username` + time window, not session ID.
 

@@ -51,7 +51,8 @@ scope or autonomy norms, and produce an auditable case with cited search job IDs
 ## Rules
 - READ-ONLY SPL only. Max 5 tool calls total then create_case.
 - Cite evidence as [sid=...]. Never echo secrets from queries.
-- Frame findings as MCP/agent governance: runaway loop, scope violation, off-hours burst.
+- Frame findings as MCP/agent governance: runaway loop, scope violation, off-hours burst, data exfiltration.
+- AgentSight blocks outputlookup/collect in its own agent (_FORBIDDEN_SPL); exfil alerts mean another agent ran what we refuse to run.
 """
 
 TOOL_ALLOWLIST = [
@@ -79,7 +80,10 @@ def _load_ollama_model():
     from splunklib.ai import OpenAIModel
 
     base_url = os.environ.get("AGENTSIGHT_OLLAMA_URL", "http://127.0.0.1:11434/v1")
-    model = os.environ.get("AGENTSIGHT_OLLAMA_CHAT_MODEL", "llama3.2:latest")
+    model = os.environ.get(
+        "AGENTSIGHT_OLLAMA_CHAT_MODEL",
+        "hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0",
+    )
     return OpenAIModel(model=model, base_url=base_url, api_key="ollama")
 
 

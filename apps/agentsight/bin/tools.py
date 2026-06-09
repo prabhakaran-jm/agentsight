@@ -46,7 +46,10 @@ def _escape_spl_string(value: str) -> str:
 def _load_ai_config() -> dict[str, str]:
     return {
         "provider": os.environ.get("AGENTSIGHT_AI_PROVIDER", "Ollama"),
-        "model": os.environ.get("AGENTSIGHT_AI_MODEL", "llama3.2:latest"),
+        "model": os.environ.get(
+            "AGENTSIGHT_AI_MODEL",
+            "hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0",
+        ),
         "connection": os.environ.get("AGENTSIGHT_AI_CONNECTION", "ollama_local"),
     }
 
@@ -352,6 +355,12 @@ def _investigation_spl_for_rule(trigger_rule: str, actor: str) -> str:
             f"username=\"{actor_esc}\" earliest=-24h "
             "| spath | eval hour=strftime(_time, \"%H\") "
             "| stats count by hour tool_name"
+        )
+    if trigger_rule == "mcp_data_exfiltration":
+        return (
+            f"index=_audit sourcetype=audittrail action=search user=\"{actor_esc}\" earliest=-1h "
+            "| search match(search, \"(?i)\\b(outputlookup|outputcsv|collect|sendemail)\\b\") "
+            "| table _time user search"
         )
     return (
         "index=_internal sourcetype=mcp_server rpc_method=tools/call "

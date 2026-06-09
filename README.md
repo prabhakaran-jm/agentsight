@@ -4,7 +4,7 @@
 
 Observability for the autonomous workforce touching your Splunk data — built for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.com/) (**Security** track).
 
-AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** (Ollama locally / Foundation-Sec on Cloud for demo), and supports async analyst approval plus **`| agentsight_explain`** in the search bar.
+AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** with **Foundation-Sec open weights in Ollama** (Path A — one-machine demo), and supports async analyst approval plus **`| agentsight_explain`** in the search bar.
 
 ## What you can do with this
 
@@ -13,11 +13,22 @@ AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP
 | See MCP agents querying Splunk | **AgentSight** app → dashboard → *MCP Activity Timeline* |
 | Simulate a rogue agent (demo) | `bash scripts/demo_mcp_burst.sh` |
 | Detect runaway tool loops | Saved search **AgentSight - MCP Tool Loop** |
+| Detect MCP data exfiltration SPL | Saved search **AgentSight - MCP Data Exfiltration** |
 | Auto-investigate with AI | Alert action **AgentSight Investigate** on detection searches |
 | Approve or deny a proposed fix | Dashboard → *Approve / Deny Queued Action* (needs `case_id` + `action_id`) |
 | Get a plain-English case summary | Search: `\| agentsight_explain case_id=case_XXXXXXXX` |
 
 The dashboard shows live MCP traffic from `index=_internal sourcetype=mcp_server`. **Cases and approvals only appear after** you run a detection and the investigate alert action fires.
+
+### Judges: detection rules are not scheduled by default
+
+All four detection saved searches ship with **`enableSched = 0`** so installs stay quiet. To see an alert in under two minutes:
+
+1. Run `bash scripts/demo_mcp_burst.sh` (or any MCP activity).
+2. **Settings → Searches, reports, and alerts** → open **AgentSight - MCP Tool Loop** → **Open in Search** → **Run**.
+3. Enable alert action **AgentSight Investigate** on that search, then trigger the alert (or run **AgentSight Investigate** manually via the saved search alert).
+
+To run hands-free during a demo, enable the schedule on each detection rule in Settings, or set `enableSched = 1` in `$SPLUNK_HOME/etc/apps/agentsight/local/savedsearches.conf` and restart Splunk.
 
 ## Architecture
 
@@ -31,7 +42,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the system diagram and data flow.
 | [Splunk MCP Server](https://splunkbase.splunk.com/app/7931) | MCP audit source |
 | [Python for Scientific Computing](https://splunkbase.splunk.com/app/2882) | AI Toolkit dependency |
 | [Splunk AI Toolkit](https://splunkbase.splunk.com/app/2890) 5.7+ | `\| ai` command |
-| [Ollama](https://ollama.com) (local dev) | Chat + classify |
+| [Ollama](https://ollama.com) + [Foundation-Sec GGUF](https://huggingface.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF) | Chat + classify (Path A) |
 | `splunk-sdk[ai]` | Agent + tools (see below) |
 
 ## Install
@@ -85,6 +96,23 @@ Open: **http://localhost:8000/en-US/app/agentsight/agentsight_dashboard**
 | Dashboard panels say *Search is waiting for input* | Restart Splunk after dashboard update; timeline panels auto-run — approval fields are optional |
 | Empty MCP timeline | No MCP traffic yet — run `bash scripts/demo_mcp_burst.sh` |
 | Investigate / explain errors | Run `bash scripts/install_agentsight_deps.sh`; confirm Ollama is running |
+
+## Foundation-Sec (Path A — do this first)
+
+Hosted Foundation-Sec runs on **Splunk Cloud only**. For a single-machine submission demo, pull open weights into Ollama:
+
+```bash
+bash scripts/setup_foundation_sec_ollama.sh
+```
+
+Then set (or rely on defaults in `apps/agentsight/default/ai.conf`):
+
+```bash
+export AGENTSIGHT_OLLAMA_CHAT_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
+export AGENTSIGHT_AI_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
+```
+
+Optional **Path B** (≤1 day): Splunk Cloud trial clip with **Splunk Hosted Models** visible — same prompt, ~15 seconds. See [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md).
 
 ## First demo (10 minutes)
 
@@ -162,12 +190,12 @@ Saved searches ship with `enableSched = 0`. Enable schedules in **Settings → S
 | `SPLUNK_MCP_TOKEN` | — | MCP encrypted token |
 | `SPLUNK_MCP_URL` | `https://localhost:8089/services/mcp` | MCP endpoint |
 | `AGENTSIGHT_OLLAMA_URL` | `http://127.0.0.1:11434/v1` | Agent chat model |
-| `AGENTSIGHT_OLLAMA_CHAT_MODEL` | `llama3.2:latest` | Agent chat model name |
+| `AGENTSIGHT_OLLAMA_CHAT_MODEL` | `hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0` | Agent chat model (Foundation-Sec) |
 | `AGENTSIGHT_AI_PROVIDER` | `Ollama` | `\| ai` in classify tool |
-| `AGENTSIGHT_AI_MODEL` | `llama3.2:latest` | `\| ai` model |
+| `AGENTSIGHT_AI_MODEL` | `hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0` | `\| ai` classify model |
 | `AGENTSIGHT_AI_CONNECTION` | `ollama_local` | AI Toolkit connection name |
 
-For Foundation-Sec demo on Splunk Cloud, set `AGENTSIGHT_AI_*` to Hosted Models / `foundation-sec-8b-instruct`.
+For Path B (Splunk Cloud clip), set `AGENTSIGHT_AI_*` to Hosted Models / `foundation-sec-8b-instruct`. Path A (Ollama + Foundation-Sec GGUF) is the primary end-to-end demo.
 
 ## Synthetic fallback (offline judges only)
 

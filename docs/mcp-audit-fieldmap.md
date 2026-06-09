@@ -4,7 +4,7 @@ Verified from live Splunk MCP Server 1.2.0 on `localhost:8089`.
 
 **Platform:** Fedora Linux · Splunk Enterprise at `/opt/splunk` (systemd `Splunkd.service`)
 
-**Status:** MCP call **Verified** | Audit discovery **Verified** (2026-06-09) | `\| ai` **Pass (Ollama)** | Foundation-Sec **deferred** (Splunk Cloud / activation token)
+**Status:** MCP call **Verified** | Audit discovery **Verified** (2026-06-09) | `\| ai` **Pass (Ollama)** | Foundation-Sec **Path A** (Ollama + community GGUF — see `scripts/setup_foundation_sec_ollama.sh`)
 
 ---
 
@@ -222,7 +222,9 @@ This is expected on many **on-prem dev licenses** until cloud services are linke
 | ai provider=Ollama model=llama3.2 prompt="$prompt$"
 ```
 
-**Recommended hackathon split:** build AgentSight detections on **local** Splunk (MCP verified); record **Foundation-Sec** classification on **Splunk Cloud** where Hosted Models is native.
+**Recommended hackathon path (Path A):** `bash scripts/setup_foundation_sec_ollama.sh` — Foundation-Sec-8B-Instruct GGUF in Ollama; same `| ai` plumbing, literal Foundation-Sec on camera without Splunk Cloud.
+
+**Optional Path B (≤1 day):** Splunk Cloud trial clip with **Splunk Hosted Models** for the hosted-service checkbox (~15 s). Narrative: *same model, local or Splunk-hosted — portable by design.*
 
 ### "Failed to fetch config metadata" (Create Connection modal empty)
 
@@ -322,11 +324,19 @@ Shorthand (if your AI Toolkit maps the alias):
 | Audit event visible in `_audit` / `_internal` | Yes |
 | `tool_name` / `splunk_run_query` in `mcp_server` | Yes |
 | SPL text in `_audit.search` or `mcp_server.message` | Yes |
-| Foundation-Sec pre-flight | **Deferred** — use **Ollama** locally (`ollama_local`); Foundation-Sec on Splunk Cloud for video |
+| Foundation-Sec pre-flight | **Path A** — Ollama + `hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0` (run `scripts/setup_foundation_sec_ollama.sh`) |
 | `\| ai` Ollama pre-flight | **Pass** (2026-06-09) — use `prompt="'{prompt}'"` syntax |
 | AgentSight app | **Built** — detections, investigate, dashboard, explain |
 
-**Decision:** **Go** — build and demo on Fedora with Ollama; splice Foundation-Sec clip from Cloud for submission (see [docs/DEMO_VIDEO.md](DEMO_VIDEO.md)).
+**Decision:** **Go** — demo end-to-end on one machine with Foundation-Sec in Ollama (Path A). See [docs/DEMO_VIDEO.md](DEMO_VIDEO.md).
+
+---
+
+## Rule 4 — MCP data exfiltration (`_audit` + MCP join)
+
+Detects mutating/export SPL in `_audit.search` for users with concurrent `mcp_server` activity. Commands match AgentSight's own `_FORBIDDEN_SPL` guard in `bin/tools.py` (`outputlookup`, `outputcsv`, `collect`, `sendemail`, `meventcollect`).
+
+**Result-volume note (unverified on this stack):** Splunk `audittrail` `info=completed` events may expose a result-count field depending on version; AgentSight Rule 4 uses **command-pattern + MCP attribution** only until `result_count` (or equivalent) is confirmed in live `_audit` samples. High row counts from MCP responses are available on `mcp_server.message` via `Exact total_rows=N` if a volume threshold is added later.
 
 ---
 

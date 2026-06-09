@@ -24,19 +24,23 @@ flowchart TD
         R1[MCP_Tool_Loop]
         R2[MCP_Scope_Violation]
         R3[MCP_Off_Hours_Burst]
+        R4[MCP_Data_Exfiltration]
         Internal --> R1
         Internal --> R3
         Audit --> R2
+        Audit --> R4
+        Internal --> R4
     end
 
     subgraph investigate [Investigation]
         Alert[agentsight_investigate]
         Tools[bin/tools.py]
         AIAgent["splunklib.ai Agent"]
-        PipeAI["| ai classify Ollama or Foundation-Sec"]
+        PipeAI["| ai classify Foundation-Sec via Ollama Path A"]
         R1 --> Alert
         R2 --> Alert
         R3 --> Alert
+        R4 --> Alert
         Alert --> AIAgent
         AIAgent --> Tools
         Tools --> PipeAI
@@ -59,7 +63,7 @@ flowchart TD
 |------------|-------------------|
 | **Splunk MCP Server** (Splunkbase 7931) | Source of real audit telemetry (`mcp_server`, `audittrail`) |
 | **`splunklib.ai` Agent** | Investigation and explain agents with local tools |
-| **`| ai` command** (AI Toolkit) | `classify_agent_behavior` via Ollama (dev) or Foundation-Sec (demo) |
+| **`| ai` command** (AI Toolkit) | `classify_agent_behavior` via Foundation-Sec open weights in Ollama (Path A); optional Splunk Hosted Models clip (Path B) |
 | **Custom alert action** | `agentsight_investigate` on detection saved searches |
 | **Custom search commands** | `agentsight_approve`, `agentsight_explain` |
 
@@ -68,7 +72,7 @@ flowchart TD
 1. **MCP clients** call `splunk_run_query` via Streamable HTTP (`POST /services/mcp`).
 2. **Audit logs** land in `_internal`/`mcp_server` and `_audit`/`audittrail`.
 3. **Normalization** saved search copies events to `index=agentsight` / `agentsight:mcp_audit`.
-4. **Detection** saved searches (every 5m) fire on runaway loops, scope violations, off-hours bursts.
+4. **Detection** saved searches fire on runaway loops, scope violations, off-hours bursts, and MCP-attributed data-export SPL.
 5. **`agentsight_investigate`** runs an AI agent (max ~5 tool calls, 4 min budget) → indexes `agentsight:case`.
 6. **Dashboard** shows live MCP timeline; analyst **approves** queued SPL via `agentsight_approve`.
 7. **`| agentsight_explain`** re-explains the case in the search bar.
