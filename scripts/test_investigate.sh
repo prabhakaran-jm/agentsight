@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Dry-run agentsight_investigate with a fake alert payload (as splunk user).
+set -euo pipefail
+
+: "${SPLUNK_HOME:=/opt/splunk}"
+: "${SPLUNK_PASSWORD:?Set SPLUNK_PASSWORD}"
+
+BIN="$(cd "$(dirname "$0")/../apps/agentsight/bin" && pwd)"
+TMP="$(mktemp -d)"
+RESULTS="${TMP}/results.csv.gz"
+PAYLOAD="${TMP}/payload.json"
+trap 'rm -rf "${TMP}"' EXIT
+
+# Minimal detection row
+printf '%s\n' \
+  'trigger_rule,severity,actor,username,mcp_user,session_id,description' \
+  'mcp_tool_loop,high,admin,admin,admin,test_sess_001,MCP agent admin made 6 splunk_run_query calls in 10m' \
+  | gzip -c > "${RESULTS}"
+
+# Get session key for local Splunk
+SESSION_KEY="$(
+  curl -sk -u "admin:${SPLUNK_PASSWORD}" \
+    https://localhost:8089/services/auth/login \
+    -d username=admin \
+    -d password="${SPLUNK_PASSWORD}" \
+  | sed -n 's/.*<sessionKey>\(.*\)<\/sessionKey>.*/\1/p'
+)"
+
+if [[ -z "${SESSION_KEY}" ]]; then
+  echo "Failed to obtain Splunk session key" >&2
+  exit 1
+fi
+
+cat > "${PAYLOAD}" <<EOF
+{
+  "search_name": "AgentSight - MCP Tool Loop",
+  "results_file": "${RESULTS}",
+  "server_uri": "https://localhost:8089",
+  "session_key": "${SESSION_KEY}"
+}
+EOF
+
+echo "Running agentsight_investigate with test payload..."
+if id splunk &>/dev/null; then
+  sudo -u splunk "${SPLUNK_HOME}/bin/splunk" cmd python3 \
+    "${BIN}/agentsight_investigate.py" --execute < "${PAYLOAD}"
+else
+  "${SPLUNK_HOME}/bin/splunk" cmd python3 \
+    "${BIN}/agentsight_investigate.py" --execute < "${PAYLOAD}"
+fi
+
+echo ""
+echo "Check case:"
+echo "  index=agentsight sourcetype=agentsight:case earliest=-15m"
+echo "Check log:"
+echo "  sudo tail -30 /opt/splunk/var/log/splunk/agentsight.log"

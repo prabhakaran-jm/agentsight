@@ -97,7 +97,7 @@ with local tools; on failure it falls back to a scripted investigation loop.
 Install Python dependencies into the app (if `splunklib.ai` is not on the Splunk Python path):
 
 ```bash
-python3 -m pip install -r apps/agentsight/requirements.txt -t apps/agentsight/bin/lib
+bash ../../scripts/install_agentsight_deps.sh
 sudo systemctl restart Splunkd.service
 ```
 

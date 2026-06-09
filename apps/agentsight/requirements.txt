@@ -1,3 +1,3 @@
-# Install into apps/agentsight/bin/lib for splunklib.ai on Splunk Enterprise:
-#   python3 -m pip install -r requirements.txt -t bin/lib
+# Install with Splunk's Python (NOT system python3):
+#   bash ../../scripts/install_agentsight_deps.sh
 splunk-sdk[ai]>=3.0.0

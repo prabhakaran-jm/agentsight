@@ -101,4 +101,3 @@ agentsight/
 3. Dashboard approve → follow-up SPL results
 4. `| agentsight_explain case_id=...`
 
-See [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md) for the full recording checklist.

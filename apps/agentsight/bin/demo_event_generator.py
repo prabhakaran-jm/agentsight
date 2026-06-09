@@ -15,8 +15,9 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "lib"))
+
 from splunklib import client
-from splunklib.binding import connect
 
 INDEX = "agentsight"
 GENERATOR = "agentsight_demo_event_generator"
@@ -33,8 +34,10 @@ def _connect() -> client.Service:
     username = os.environ.get("SPLUNK_USER", "admin")
     password = os.environ.get("SPLUNK_PASSWORD")
     if token:
-        return connect(scheme="https", host=host, port=port, token=token, autologin=True)
-    return connect(
+        return client.connect(
+            scheme="https", host=host, port=port, token=token, autologin=True
+        )
+    return client.connect(
         scheme="https",
         host=host,
         port=port,

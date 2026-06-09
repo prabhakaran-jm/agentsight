@@ -85,38 +85,4 @@
     </panel>
   </row>
 
-  <fieldset submitButton="true" autoRun="false">
-    <input type="text" token="approve_case_id">
-      <label>Case ID</label>
-      <default></default>
-    </input>
-    <input type="text" token="approve_action_id">
-      <label>Action ID</label>
-      <default></default>
-    </input>
-    <input type="dropdown" token="approve_decision">
-      <label>Decision</label>
-      <choice value="approved">Approve</choice>
-      <choice value="denied">Deny</choice>
-      <default>approved</default>
-    </input>
-  </fieldset>
-
-  <row>
-    <panel>
-      <title>Approve / Deny Queued Action</title>
-      <table>
-        <search>
-          <query>| agentsight_approve case_id="$approve_case_id$" action_id="$approve_action_id$" decision="$approve_decision$" actor="$env:user$"
-| table _time status case_id action_id decision new_case_status followup_sid message</query>
-          <earliest>-1m</earliest>
-          <latest>now</latest>
-        </search>
-      </table>
-      <html>
-        <p>Enter <code>case_id</code> and <code>action_id</code> from a pending case, then change the decision dropdown to re-run.</p>
-        <p>Try in Search: <code>index=agentsight sourcetype=agentsight:case case_id=YOUR_ID | agentsight_explain case_id=YOUR_ID</code></p>
-      </html>
-    </panel>
-  </row>
 </dashboard>

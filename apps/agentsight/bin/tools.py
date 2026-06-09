@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: MIT
 """AgentSight local tools for splunklib.ai investigation agent."""
 
-from __future__ import annotations
-
 import json
 import os
 import re
@@ -14,6 +12,7 @@ from splunklib.ai.registry import ToolContext, ToolRegistry
 from splunklib.results import JSONResultsReader
 
 registry = ToolRegistry()
+_TOOLS_REGISTERED = False
 
 # In-process pending actions keyed by case_id (alert action is single-process).
 _PENDING_ACTIONS: dict[str, list[dict[str, str]]] = {}
@@ -76,7 +75,6 @@ def _validate_readonly_spl(spl: str) -> None:
         raise ValueError("SPL contains disallowed mutating or unsafe commands")
 
 
-@registry.tool()
 def get_alert_context(
     ctx: ToolContext,
     trigger_rule: str,
@@ -118,7 +116,6 @@ def get_alert_context(
     }
 
 
-@registry.tool()
 def run_investigation_search(
     ctx: ToolContext,
     spl: str,
@@ -141,7 +138,6 @@ def run_investigation_search(
     }
 
 
-@registry.tool()
 def log_investigation_step(
     ctx: ToolContext,
     case_id: str,
@@ -166,7 +162,6 @@ def log_investigation_step(
     return {"status": "logged", "case_id": case_id, "step_number": step_number}
 
 
-@registry.tool()
 def classify_agent_behavior(
     ctx: ToolContext,
     case_id: str,
@@ -234,7 +229,6 @@ def classify_agent_behavior(
     }
 
 
-@registry.tool()
 def queue_proposed_action(
     ctx: ToolContext,
     case_id: str,
@@ -259,7 +253,6 @@ def queue_proposed_action(
     return {"action_id": entry["action_id"], "status": "queued", "case_id": case_id}
 
 
-@registry.tool()
 def create_case(
     ctx: ToolContext,
     case_id: str,
@@ -453,5 +446,20 @@ def run_scripted_investigation(service: Any, logger: Any, alert_row: dict[str, s
     return case_id
 
 
+def register_tools() -> None:
+    """Register tools with splunklib.ai (deferred — avoids pydantic import errors on alert action)."""
+    global _TOOLS_REGISTERED
+    if _TOOLS_REGISTERED:
+        return
+    registry.tool()(get_alert_context)
+    registry.tool()(run_investigation_search)
+    registry.tool()(log_investigation_step)
+    registry.tool()(classify_agent_behavior)
+    registry.tool()(queue_proposed_action)
+    registry.tool()(create_case)
+    _TOOLS_REGISTERED = True
+
+
 if __name__ == "__main__":
+    register_tools()
     registry.run()

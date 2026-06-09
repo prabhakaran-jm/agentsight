@@ -1,3 +1,4 @@
 <nav search_view="search" color="#1e525c">
   <view name="agentsight_dashboard" default="true" />
+  <view name="agentsight_approval" />
 </nav>

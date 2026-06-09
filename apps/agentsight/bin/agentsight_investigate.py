@@ -13,12 +13,17 @@ import sys
 from typing import Any
 from urllib.parse import urlsplit
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "lib"))
+_BIN_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _BIN_DIR)
+sys.path.insert(0, os.path.join(_BIN_DIR, "lib"))
 
-from pydantic import BaseModel, Field
-from setup_logging import setup_logging
-
-from splunklib import client
+try:
+    from pydantic import BaseModel, Field
+    from setup_logging import setup_logging
+    from splunklib import client
+except Exception as import_error:
+    sys.stderr.write(f"FATAL agentsight_investigate import failed: {import_error}\n")
+    raise
 
 logger = setup_logging("agentsight")
 
@@ -120,8 +125,9 @@ async def invoke_investigation_agent(
     from splunklib.ai.limits import AgentLimits
     from splunklib.ai.tool_settings import LocalToolSettings, ToolAllowlist, ToolSettings
 
-    from tools import clear_pending_actions
+    from tools import clear_pending_actions, register_tools
 
+    register_tools()
     clear_pending_actions(investigation.case_id)
 
     model = _load_ollama_model()
@@ -196,4 +202,10 @@ def handle_alert() -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1] != "--execute":
+        sys.stderr.write(
+            "FATAL agentsight_investigate: unsupported execution mode "
+            "(expected --execute flag)\n"
+        )
+        sys.exit(1)
     handle_alert()

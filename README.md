@@ -6,6 +6,19 @@ Observability for the autonomous workforce touching your Splunk data — built f
 
 AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** (Ollama locally / Foundation-Sec on Cloud for demo), and supports async analyst approval plus **`| agentsight_explain`** in the search bar.
 
+## What you can do with this
+
+| You want to… | Where / how |
+|--------------|-------------|
+| See MCP agents querying Splunk | **AgentSight** app → dashboard → *MCP Activity Timeline* |
+| Simulate a rogue agent (demo) | `bash scripts/demo_mcp_burst.sh` |
+| Detect runaway tool loops | Saved search **AgentSight - MCP Tool Loop** |
+| Auto-investigate with AI | Alert action **AgentSight Investigate** on detection searches |
+| Approve or deny a proposed fix | Dashboard → *Approve / Deny Queued Action* (needs `case_id` + `action_id`) |
+| Get a plain-English case summary | Search: `\| agentsight_explain case_id=case_XXXXXXXX` |
+
+The dashboard shows live MCP traffic from `index=_internal sourcetype=mcp_server`. **Cases and approvals only appear after** you run a detection and the investigate alert action fires.
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the system diagram and data flow.
@@ -21,30 +34,100 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the system diagram and data flow.
 | [Ollama](https://ollama.com) (local dev) | Chat + classify |
 | `splunk-sdk[ai]` | Agent + tools (see below) |
 
-## Quick install
+## Install
 
 ```bash
-git clone <your-repo-url> agentsight
+git clone https://github.com/prabhakaran-jm/agentsight.git agentsight
 cd agentsight
 
-# Install app (symlink recommended for development)
+# Python deps — MUST use Splunk's Python, not system python3 (Fedora 3.14 ≠ Splunk 3.9/3.11)
+bash scripts/install_agentsight_deps.sh
+
+# Remove accidental self-symlink if present
+rm -f apps/agentsight/agentsight
+```
+
+### Option A — Symlink (development; edit repo files live)
+
+```bash
 sudo ln -sf "$(pwd)/apps/agentsight" /opt/splunk/etc/apps/agentsight
 sudo chown -h splunk:splunk /opt/splunk/etc/apps/agentsight
 
-# Python deps for splunklib.ai in custom commands / alert action
-python3 -m pip install -r apps/agentsight/requirements.txt -t apps/agentsight/bin/lib
+# Splunk runs as user "splunk" — it must traverse the path to your repo
+chmod 711 "$HOME"
+chmod -R a+rX "$(pwd)/apps/agentsight"
 
-# Restart Splunk (systemd-managed installs)
 sudo systemctl restart Splunkd.service
+```
+
+### Option B — Copy (simplest; no home-directory permission issues)
+
+```bash
+sudo rm -rf /opt/splunk/etc/apps/agentsight
+sudo cp -a apps/agentsight /opt/splunk/etc/apps/agentsight
+sudo chown -R splunk:splunk /opt/splunk/etc/apps/agentsight
+sudo systemctl restart Splunkd.service
+```
+
+### Verify install
+
+```bash
+sudo -u splunk /opt/splunk/bin/splunk list app | grep -i agentsight
+```
+
+Open: **http://localhost:8000/en-US/app/agentsight/agentsight_dashboard**
+
+### Troubleshooting: app not in launcher
+
+| Symptom | Fix |
+|---------|-----|
+| App missing from Apps list | Symlink target not readable by `splunk` user — use **Option B** or `chmod 711 $HOME` (Option A) |
+| Dashboard panels say *Search is waiting for input* | Restart Splunk after dashboard update; timeline panels auto-run — approval fields are optional |
+| Empty MCP timeline | No MCP traffic yet — run `bash scripts/demo_mcp_burst.sh` |
+| Investigate / explain errors | Run `bash scripts/install_agentsight_deps.sh`; confirm Ollama is running |
+
+## First demo (10 minutes)
+
+Do these steps in order after install:
+
+**1. Confirm MCP works**
+
+```bash
+export SPLUNK_MCP_TOKEN='your-encrypted-mcp-token'
+export SPLUNK_MCP_URL='https://localhost:8089/services/mcp'
+bash scripts/day0_mcp_call.sh
+```
+
+**2. Generate rogue-agent traffic**
+
+```bash
+bash scripts/demo_mcp_burst.sh
+```
+
+**3. Refresh the AgentSight dashboard** — *MCP Activity Timeline* should show `splunk_run_query` spikes in the last 30 minutes.
+
+**4. Run the detection** — Splunk Web → **Settings → Searches, reports, and alerts** → open **AgentSight - MCP Tool Loop** → **Open in Search** → run. You should see a hit (≥5 calls in 10m).
+
+**5. Investigate** — On that saved search, ensure alert action **AgentSight Investigate** is enabled. Run the search as an alert (or trigger manually). Then:
+
+```spl
+index=agentsight sourcetype=agentsight:case earliest=-1h
+| table _time case_id trigger_rule severity status actor classification
+```
+
+**6. Approve** — Copy `case_id` and `action_id` from the case JSON into the dashboard approval form.
+
+**7. Explain**
+
+```spl
+index=agentsight sourcetype=agentsight:case
+| head 1
+| agentsight_explain case_id=case_XXXXXXXX
 ```
 
 ## Day 0 verification
 
 ```bash
-export SPLUNK_MCP_TOKEN='your-encrypted-mcp-token'
-export SPLUNK_MCP_URL='https://localhost:8089/services/mcp'
-
-bash scripts/day0_mcp_call.sh
 bash scripts/day0_discovery_mcp.sh
 ```
 
@@ -62,35 +145,15 @@ Field map: [docs/mcp-audit-fieldmap.md](docs/mcp-audit-fieldmap.md)
 
 ## Judge quickstart (live demo loop)
 
-1. **MCP burst** — generate real audit traffic:
+1. **MCP burst** — `bash scripts/demo_mcp_burst.sh`
+2. **Normalize** (optional) — saved search **AgentSight - Normalize MCP Audit**
+3. **Detect** — **AgentSight - MCP Tool Loop**
+4. **Investigate** — alert action **AgentSight Investigate**
+5. **Dashboard** — approve pending action
+6. **Explain** — `| agentsight_explain case_id=...`
+7. **Verify** — `index=agentsight sourcetype=agentsight:* earliest=-1h | stats count by sourcetype`
 
-   ```bash
-   export SPLUNK_MCP_TOKEN='...'
-   bash scripts/demo_mcp_burst.sh
-   ```
-
-2. **Normalize** (optional) — run saved search **AgentSight - Normalize MCP Audit**
-
-3. **Detect** — run **AgentSight - MCP Tool Loop** (or wait for scheduled alert)
-
-4. **Investigate** — enable alert action **AgentSight Investigate** on the detection search
-
-5. **Dashboard** — open **AgentSight** app → approve pending action
-
-6. **Explain**:
-
-   ```spl
-   index=agentsight sourcetype=agentsight:case
-   | head 1
-   | agentsight_explain case_id=case_XXXXXXXX
-   ```
-
-7. **Verify**:
-
-   ```spl
-   index=agentsight sourcetype=agentsight:* earliest=-1h
-   | stats count by sourcetype
-   ```
+Saved searches ship with `enableSched = 0`. Enable schedules in **Settings → Searches** or set `enableSched = 1` in `local/savedsearches.conf` for hands-free alerts.
 
 ## Environment variables
 
@@ -110,7 +173,7 @@ For Foundation-Sec demo on Splunk Cloud, set `AGENTSIGHT_AI_*` to Hosted Models 
 
 ```bash
 export SPLUNK_PASSWORD='...'
-python3 apps/agentsight/bin/demo_event_generator.py mcp_tool_loop
+bash scripts/demo_event_generator.sh mcp_tool_loop
 ```
 
 Events land in `sourcetype=agentsight:demo` — **not** a substitute for real MCP in the submission video.
