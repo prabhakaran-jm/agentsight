@@ -67,6 +67,26 @@ bash scripts/demo_mcp_burst.sh
 ### Demo: trigger Rule 2
 
 Run an MCP query targeting a forbidden index, e.g. `index=secrets | head 1`, via `splunk_run_query`.
+
+## Agent tools (`bin/tools.py`)
+
+Registered for `splunklib.ai`:
+
+| Tool | Purpose |
+|------|---------|
+| `get_alert_context` | Recent `mcp_server` + `agentsight:mcp_audit` events |
+| `run_investigation_search` | Read-only oneshot SPL (max 50 rows) |
+| `log_investigation_step` | Audit trail to `agentsight:investigation_step` |
+| `classify_agent_behavior` | `\| ai` via Ollama (`default/ai.conf`) |
+| `queue_proposed_action` | Async approval queue (in-memory per alert run) |
+| `create_case` | Index case to `agentsight:case` |
+
+Override AI provider for Cloud demo:
+
+```bash
+export AGENTSIGHT_AI_PROVIDER="Splunk Hosted Models"
+export AGENTSIGHT_AI_MODEL="foundation-sec-8b-instruct"
+export AGENTSIGHT_AI_CONNECTION=""
 ```
 
 ## App structure
@@ -79,10 +99,11 @@ apps/agentsight/
 │   ├── props.conf            # sourcetype definitions
 │   ├── savedsearches.conf    # normalization + 3 detection rules
 │   ├── alert_actions.conf    # agentsight_investigate (stub handler; full agent Task 5)
+│   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
 │   └── commands.conf         # agentsight_explain (upcoming)
 ├── bin/
 │   ├── setup_logging.py
-│   ├── tools.py              # (upcoming)
+│   ├── tools.py              # splunklib.ai local tools (6 tools)
 │   ├── agentsight_investigate.py
 │   ├── agentsight_explain.py
 │   └── agentsight_approve.py
