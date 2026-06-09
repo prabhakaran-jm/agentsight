@@ -14,15 +14,17 @@ AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP
 | Simulate a rogue agent (demo) | `bash scripts/demo_mcp_burst.sh` |
 | Detect runaway tool loops | Saved search **AgentSight - MCP Tool Loop** |
 | Detect MCP data exfiltration SPL | Saved search **AgentSight - MCP Data Exfiltration** |
+| Detect prompt-injection payloads | Saved search **AgentSight - MCP Prompt Injection** |
 | Auto-investigate with AI | Alert action **AgentSight Investigate** on detection searches |
 | Approve or deny a proposed fix | Dashboard → *Approve / Deny Queued Action* (needs `case_id` + `action_id`) |
+| Quarantine a rogue agent (revoke tokens) | Approve a `quarantine` action → `agentsight_approve` revokes the agent's Splunk tokens |
 | Get a plain-English case summary | Search: `\| agentsight_explain case_id=case_XXXXXXXX` |
 
 The dashboard shows live MCP traffic from `index=_internal sourcetype=mcp_server`. **Cases and approvals only appear after** you run a detection and the investigate alert action fires.
 
 ### Judges: detection rules are not scheduled by default
 
-All four detection saved searches ship with **`enableSched = 0`** so installs stay quiet. To see an alert in under two minutes:
+All five detection saved searches ship with **`enableSched = 0`** so installs stay quiet. To see an alert in under two minutes:
 
 1. Run `bash scripts/demo_mcp_burst.sh` (or any MCP activity).
 2. **Settings → Searches, reports, and alerts** → open **AgentSight - MCP Tool Loop** → **Open in Search** → **Run**.
@@ -32,7 +34,7 @@ To run hands-free during a demo, enable the schedule on each detection rule in S
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the system diagram and data flow.
+See [architecture_diagram.md](architecture_diagram.md) for the system diagram and data flow.
 
 ## Prerequisites
 
@@ -213,12 +215,17 @@ Events land in `sourcetype=agentsight:demo` — **not** a substitute for real MC
 - **`| ai`** — `classify_agent_behavior` (Ollama / Foundation-Sec)
 - **Custom alert action** — `agentsight_investigate`
 - **Custom commands** — `agentsight_approve`, `agentsight_explain`
+- **Automated response** — `revoke_user_tokens` (Splunk REST `authorization/tokens`) quarantines a rogue agent on analyst approval
+
+## Detect → investigate → contain
+
+AgentSight is not detection-only. Five agent-native detections feed one investigation agent, and critical cases (scope violation, data exfiltration, prompt injection) queue a **quarantine** action. On analyst approval, `agentsight_approve` calls Splunk's `authorization/tokens` REST endpoint to revoke the rogue agent's tokens — its next MCP call fails auth, visible live on the MCP Activity Timeline. Containment **never** runs without human approval (governance by design), mirroring the `_FORBIDDEN_SPL` guard the investigation agent applies to itself.
 
 ## Documentation
 
 | Doc | Description |
 |-----|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture diagram (submission requirement) |
+| [architecture_diagram.md](architecture_diagram.md) | Architecture diagram (submission requirement) |
 | [docs/agentsight-mvp-spec.md](docs/agentsight-mvp-spec.md) | Full MVP specification |
 | [docs/mcp-audit-fieldmap.md](docs/mcp-audit-fieldmap.md) | Verified MCP audit schema |
 | [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md) | Video recording checklist |

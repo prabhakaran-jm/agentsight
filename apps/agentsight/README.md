@@ -161,14 +161,14 @@ apps/agentsight/
 │   ├── app.conf
 │   ├── indexes.conf          # index=agentsight
 │   ├── props.conf            # sourcetype definitions
-│   ├── savedsearches.conf    # normalization + 3 detection rules
+│   ├── savedsearches.conf    # normalization + 5 detection rules
 │   ├── alert_actions.conf    # agentsight_investigate custom alert action
 │   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
 │   ├── commands.conf         # agentsight_approve, agentsight_explain
 │   └── data/ui/views/agentsight_dashboard.xml
 ├── bin/
 │   ├── setup_logging.py
-│   ├── tools.py              # splunklib.ai local tools (6 tools)
+│   ├── tools.py              # splunklib.ai local tools (7 tools) + revoke_user_tokens
 │   ├── agentsight_investigate.py
 │   ├── agentsight_explain.py
 │   └── agentsight_approve.py

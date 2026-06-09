@@ -40,18 +40,22 @@ Every alert is about an autonomous MCP client or agent service account.
 Splunk is watching the agents that use Splunk. Explain what an MCP/agent did, whether it violated
 scope or autonomy norms, and produce an auditable case with cited search job IDs (sids).
 
-## Required workflow (max 5 tool calls)
+## Required workflow (max 6 tool calls)
 1. get_alert_context(trigger_rule, actor, session_id)
 2. run_investigation_search — one read-only SPL on mcp_server or agentsight:mcp_audit
 3. classify_agent_behavior — uses | ai (Ollama/Foundation-Sec)
 4. queue_proposed_action — optional read-only SPL for analyst approval (do not wait)
-5. log_investigation_step after every tool
-6. create_case — use the provided case_id; status=awaiting_approval if you queued actions
+5. queue_quarantine_action(target_user=actor) — ONLY for critical severity
+   (scope violation, data exfiltration, prompt injection). This queues revocation of the
+   agent's Splunk auth tokens; it never executes until an analyst approves it.
+6. log_investigation_step after every tool
+7. create_case — use the provided case_id; status=awaiting_approval if you queued actions
 
 ## Rules
-- READ-ONLY SPL only. Max 5 tool calls total then create_case.
+- READ-ONLY SPL only. Max 6 tool calls total then create_case.
+- Containment is queue-only: quarantine runs ONLY after human approval on the dashboard.
 - Cite evidence as [sid=...]. Never echo secrets from queries.
-- Frame findings as MCP/agent governance: runaway loop, scope violation, off-hours burst, data exfiltration.
+- Frame findings as MCP/agent governance: runaway loop, scope violation, off-hours burst, data exfiltration, prompt injection.
 - AgentSight blocks outputlookup/collect in its own agent (_FORBIDDEN_SPL); exfil alerts mean another agent ran what we refuse to run.
 """
 
@@ -61,6 +65,7 @@ TOOL_ALLOWLIST = [
     "log_investigation_step",
     "classify_agent_behavior",
     "queue_proposed_action",
+    "queue_quarantine_action",
     "create_case",
 ]
 

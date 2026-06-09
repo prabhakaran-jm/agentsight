@@ -21,7 +21,12 @@ from splunklib.searchcommands import (
     validators,
 )
 
-from tools import SimpleToolContext, _validate_readonly_spl, log_investigation_step
+from tools import (
+    SimpleToolContext,
+    _validate_readonly_spl,
+    log_investigation_step,
+    revoke_user_tokens,
+)
 
 _INDEX = "agentsight"
 
@@ -116,22 +121,50 @@ class AgentSightApproveCommand(GeneratingCommand):
 
         pending = _find_pending_action(case, action_id)
         approved_spl = (pending or {}).get("proposed_spl", "")
+        action_type = (pending or {}).get("action_type", "spl")
+        target_user = (pending or {}).get("target_user", "")
 
         approval_event = {
             "case_id": case_id,
             "action_id": action_id,
+            "action_type": action_type,
             "decision": decision,
             "actor": actor,
             "approved_spl": approved_spl,
+            "target_user": target_user,
             "followup_sid": "",
             "timestamp": _utc_now(),
         }
 
         followup_sid = None
         followup_sample: list[dict[str, Any]] = []
+        quarantine_result: dict[str, Any] = {}
         new_status = "closed" if decision == "denied" else "open"
 
-        if decision == "approved" and approved_spl:
+        if decision == "approved" and action_type == "quarantine":
+            if not target_user:
+                yield {
+                    "_time": datetime.now().timestamp(),
+                    "status": "error",
+                    "case_id": case_id,
+                    "action_id": action_id,
+                    "message": "Quarantine action has no target_user",
+                }
+                return
+            try:
+                quarantine_result = revoke_user_tokens(service, target_user)
+                approval_event["quarantine_result"] = quarantine_result
+                new_status = "contained"
+            except Exception as exc:
+                yield {
+                    "_time": datetime.now().timestamp(),
+                    "status": "error",
+                    "case_id": case_id,
+                    "action_id": action_id,
+                    "message": f"Failed to revoke tokens for {target_user}: {exc}",
+                }
+                return
+        elif decision == "approved" and approved_spl:
             try:
                 followup_sid, followup_sample = _run_readonly_search(service, approved_spl)
                 approval_event["followup_sid"] = followup_sid or ""
@@ -148,24 +181,37 @@ class AgentSightApproveCommand(GeneratingCommand):
         _submit(service, "approval", approval_event)
 
         ctx = SimpleToolContext(service, self.logger)
+        step_output = (
+            json.dumps(quarantine_result)
+            if action_type == "quarantine"
+            else json.dumps(followup_sample)
+        )
         log_investigation_step(
             ctx,
             case_id,
             100,
             "agentsight_approve",
-            json.dumps({"action_id": action_id, "decision": decision}),
-            json.dumps(followup_sample)[:4000],
+            json.dumps(
+                {"action_id": action_id, "action_type": action_type, "decision": decision}
+            ),
+            step_output[:4000],
             sid=followup_sid,
         )
 
+        # Drop only the decided action; leave any other queued actions pending.
+        remaining = [
+            item
+            for item in (case.get("pending_action_details") or [])
+            if isinstance(item, dict) and item.get("action_id") != action_id
+        ]
         updated_case = {
             **case,
             "status": new_status,
             "updated_at": _utc_now(),
             "last_decision": decision,
             "last_action_id": action_id,
-            "pending_actions": [],
-            "pending_action_details": [],
+            "pending_actions": [item.get("action_id") for item in remaining],
+            "pending_action_details": remaining,
         }
         _submit(service, "case", updated_case)
 
@@ -174,11 +220,18 @@ class AgentSightApproveCommand(GeneratingCommand):
             "status": "ok",
             "case_id": case_id,
             "action_id": action_id,
+            "action_type": action_type,
             "decision": decision,
             "new_case_status": new_status,
             "followup_sid": followup_sid or "",
             "followup_row_count": len(followup_sample),
-            "message": f"Case {case_id} updated to {new_status}",
+            "tokens_revoked": quarantine_result.get("revoked_count", 0),
+            "message": (
+                f"Quarantined {target_user}: revoked "
+                f"{quarantine_result.get('revoked_count', 0)} token(s); case {case_id} contained"
+                if action_type == "quarantine" and decision == "approved"
+                else f"Case {case_id} updated to {new_status}"
+            ),
         }
 
 

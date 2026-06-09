@@ -28,13 +28,14 @@
 | eval case_id="$approve_case_id$", action_id="$approve_action_id$"
 | where len(case_id) &gt; 0 AND len(action_id) &gt; 0
 | agentsight_approve case_id="$approve_case_id$" action_id="$approve_action_id$" decision="$approve_decision$" actor="$env:user$"
-| table _time status case_id action_id decision new_case_status followup_sid message</query>
+| table _time status case_id action_id action_type decision new_case_status tokens_revoked followup_sid message</query>
           <earliest>-1m</earliest>
           <latest>now</latest>
         </search>
       </table>
       <html>
         <p>Copy <code>case_id</code> and <code>action_id</code> from <b>AgentSight</b> dashboard → <i>Pending Agent Actions</i>, then click <b>Submit</b>.</p>
+        <p>Action types: <code>spl</code> runs an approved read-only follow-up; <code>quarantine</code> revokes the MCP agent's Splunk auth tokens and sets the case to <b>contained</b>.</p>
         <p>Explain in Search: <code>| agentsight_explain case_id=YOUR_ID</code></p>
       </html>
     </panel>

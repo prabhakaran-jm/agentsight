@@ -14,6 +14,92 @@
 
   <row>
     <panel>
+      <title>Active MCP Agents (30m)</title>
+      <single>
+        <search>
+          <query>index=_internal sourcetype=mcp_server rpc_method=tools/call
+| spath
+| stats dc(username) as agents</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+          <refresh>30s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0x0877a6"]</option>
+        <option name="rangeValues">[0]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>MCP Tool Calls (30m)</title>
+      <single>
+        <search>
+          <query>index=_internal sourcetype=mcp_server rpc_method=tools/call
+| stats count</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+          <refresh>30s</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Open Cases</title>
+      <single>
+        <search>
+          <query>index=agentsight sourcetype=agentsight:case
+| dedup case_id sortby -_time
+| search NOT status IN (closed, contained)
+| stats count</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <refresh>60s</refresh>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Pending Approvals</title>
+      <single>
+        <search>
+          <query>index=agentsight sourcetype=agentsight:case status=awaiting_approval
+| dedup case_id sortby -_time
+| stats count</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <refresh>60s</refresh>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,1]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Agents Quarantined</title>
+      <single>
+        <search>
+          <query>index=agentsight sourcetype=agentsight:approval action_type=quarantine decision=approved
+| stats dc(target_user) as contained</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <refresh>60s</refresh>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="rangeColors">["0x555555","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>MCP Activity Timeline</title>
       <chart>
         <search>
@@ -75,7 +161,8 @@
 | sort - _time
 | dedup case_id
 | spath input=_raw path=pending_action_details{}
-| table _time case_id actor trigger_rule status pending_actions
+| eval action_types=mvjoin('pending_action_details{}.action_type', ", ")
+| table _time case_id actor trigger_rule status action_types pending_actions
 | sort - _time</query>
           <earliest>-7d</earliest>
           <latest>now</latest>

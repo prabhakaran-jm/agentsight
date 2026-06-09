@@ -261,6 +261,7 @@ def queue_proposed_action(
     _validate_readonly_spl(proposed_spl)
     entry = {
         "action_id": action_id or f"action_{uuid.uuid4().hex[:8]}",
+        "action_type": "spl",
         "proposed_spl": proposed_spl,
         "rationale": rationale[:2000],
         "status": "queued",
@@ -269,6 +270,79 @@ def queue_proposed_action(
     _PENDING_ACTIONS.setdefault(case_id, []).append(entry)
     ctx.logger.info("Queued action %s for case %s", entry["action_id"], case_id)
     return {"action_id": entry["action_id"], "status": "queued", "case_id": case_id}
+
+
+def queue_quarantine_action(
+    ctx: ToolContext,
+    case_id: str,
+    action_id: str,
+    target_user: str,
+    rationale: str,
+) -> dict[str, Any]:
+    """
+    Queue agent quarantine — revoke the MCP agent's Splunk auth tokens — for async
+    human approval. Containment NEVER executes without an analyst decision.
+    """
+    entry = {
+        "action_id": action_id or f"quarantine_{uuid.uuid4().hex[:8]}",
+        "action_type": "quarantine",
+        "target_user": target_user,
+        "proposed_spl": "",
+        "rationale": rationale[:2000],
+        "status": "queued",
+        "queued_at": _utc_now(),
+    }
+    _PENDING_ACTIONS.setdefault(case_id, []).append(entry)
+    ctx.logger.info(
+        "Queued quarantine %s for case %s target=%s",
+        entry["action_id"],
+        case_id,
+        target_user,
+    )
+    return {
+        "action_id": entry["action_id"],
+        "status": "queued",
+        "case_id": case_id,
+        "action_type": "quarantine",
+        "target_user": target_user,
+    }
+
+
+def revoke_user_tokens(service: Any, target_user: str) -> dict[str, Any]:
+    """
+    Revoke all Splunk auth tokens for target_user via REST (authorization/tokens).
+    Called by agentsight_approve AFTER an analyst approves a quarantine action.
+    """
+    from urllib.parse import quote
+
+    response = service.get(
+        "authorization/tokens",
+        username=target_user,
+        output_mode="json",
+        count=0,
+    )
+    body = json.loads(response.body.read())
+    token_ids = [entry.get("name", "") for entry in body.get("entry", []) if entry.get("name")]
+
+    revoked: list[str] = []
+    errors: list[str] = []
+    for token_id in token_ids:
+        try:
+            service.delete(
+                "authorization/tokens/" + quote(token_id, safe=""),
+                username=target_user,
+            )
+            revoked.append(token_id)
+        except Exception as exc:  # noqa: BLE001 — report per-token failures, keep revoking
+            errors.append(f"{token_id}: {exc}")
+
+    return {
+        "target_user": target_user,
+        "tokens_found": len(token_ids),
+        "revoked_count": len(revoked),
+        "revoked_token_ids": revoked,
+        "errors": errors,
+    }
 
 
 def create_case(
@@ -359,8 +433,16 @@ def _investigation_spl_for_rule(trigger_rule: str, actor: str) -> str:
     if trigger_rule == "mcp_data_exfiltration":
         return (
             f"index=_audit sourcetype=audittrail action=search user=\"{actor_esc}\" earliest=-1h "
-            "| search match(search, \"(?i)\\b(outputlookup|outputcsv|collect|sendemail)\\b\") "
+            "| where match(search, \"(?i)\\b(outputlookup|outputcsv|collect|sendemail)\\b\") "
             "| table _time user search"
+        )
+    if trigger_rule == "mcp_prompt_injection":
+        return (
+            "index=_internal sourcetype=mcp_server rpc_method=tools/call "
+            f"username=\"{actor_esc}\" earliest=-1h "
+            "| spath "
+            "| rex field=message \"Executing SPL query: (?<spl_query>.+?) \\(\" "
+            "| table _time tool_name spl_query status request_id"
         )
     return (
         "index=_internal sourcetype=mcp_server rpc_method=tools/call "
@@ -448,6 +530,28 @@ def run_scripted_investigation(service: Any, logger: Any, alert_row: dict[str, s
         followup_spl,
         "queued",
     )
+    step += 1
+
+    if severity == "critical" and actor not in ("", "unknown"):
+        quarantine_rationale = (
+            f"Critical {trigger_rule} by MCP agent {actor} — revoke its Splunk auth "
+            "tokens to contain the agent. Requires analyst approval."
+        )
+        queue_quarantine_action(
+            ctx,
+            case_id,
+            f"quarantine_{case_id}",
+            actor,
+            quarantine_rationale,
+        )
+        log_investigation_step(
+            ctx,
+            case_id,
+            step,
+            "queue_quarantine_action",
+            json.dumps({"target_user": actor}),
+            "queued",
+        )
 
     findings = [
         f"[sid={sid}] MCP investigation search returned {search_result.get('row_count', 0)} rows"
@@ -480,6 +584,7 @@ def register_tools() -> None:
     registry.tool()(log_investigation_step)
     registry.tool()(classify_agent_behavior)
     registry.tool()(queue_proposed_action)
+    registry.tool()(queue_quarantine_action)
     registry.tool()(create_case)
     _TOOLS_REGISTERED = True
 

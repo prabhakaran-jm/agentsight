@@ -20,13 +20,15 @@ flowchart TD
         NormSS --> AgentsightIdx
     end
 
-    subgraph detect [Detection]
+    subgraph detect [Detection 5 rules]
         R1[MCP_Tool_Loop]
         R2[MCP_Scope_Violation]
         R3[MCP_Off_Hours_Burst]
         R4[MCP_Data_Exfiltration]
+        R5[MCP_Prompt_Injection]
         Internal --> R1
         Internal --> R3
+        Internal --> R5
         Audit --> R2
         Audit --> R4
         Internal --> R4
@@ -41,18 +43,22 @@ flowchart TD
         R2 --> Alert
         R3 --> Alert
         R4 --> Alert
+        R5 --> Alert
         Alert --> AIAgent
         AIAgent --> Tools
         Tools --> PipeAI
         Tools --> AgentsightIdx
     end
 
-    subgraph analyst [Analyst surfaces]
+    subgraph analyst [Analyst surfaces and response]
         Dash[agentsight_dashboard]
         Approve["| agentsight_approve"]
         Explain["| agentsight_explain"]
+        Quarantine["revoke_user_tokens REST authorization/tokens"]
         AgentsightIdx --> Dash
         Dash --> Approve
+        Approve -->|quarantine approved| Quarantine
+        Quarantine --> MCP
         AgentsightIdx --> Explain
     end
 ```
@@ -72,10 +78,11 @@ flowchart TD
 1. **MCP clients** call `splunk_run_query` via Streamable HTTP (`POST /services/mcp`).
 2. **Audit logs** land in `_internal`/`mcp_server` and `_audit`/`audittrail`.
 3. **Normalization** saved search copies events to `index=agentsight` / `agentsight:mcp_audit`.
-4. **Detection** saved searches fire on runaway loops, scope violations, off-hours bursts, and MCP-attributed data-export SPL.
-5. **`agentsight_investigate`** runs an AI agent (max ~5 tool calls, 4 min budget) → indexes `agentsight:case`.
-6. **Dashboard** shows live MCP timeline; analyst **approves** queued SPL via `agentsight_approve`.
-7. **`| agentsight_explain`** re-explains the case in the search bar.
+4. **Detection** saved searches fire on runaway loops, scope violations, off-hours bursts, MCP-attributed data-export SPL, and prompt-injection signatures in tool arguments.
+5. **`agentsight_investigate`** runs an AI agent (max ~6 tool calls, 4 min budget) → indexes `agentsight:case`. For critical findings it queues a **quarantine** action alongside any read-only follow-up.
+6. **Dashboard** shows live MCP timeline + KPIs; analyst **approves** a queued SPL or **quarantine** via `agentsight_approve`.
+7. **Quarantine** (on approval only) calls `revoke_user_tokens` → Splunk REST `authorization/tokens` to revoke the rogue agent's tokens; case status → `contained`.
+8. **`| agentsight_explain`** re-explains the case in the search bar.
 
 ## Index and sourcetypes
 
@@ -91,7 +98,7 @@ flowchart TD
 
 ```
 agentsight/
-├── ARCHITECTURE.md          # this file
+├── architecture_diagram.md  # this file (Devpost-required filename)
 ├── README.md                # judge quickstart
 ├── LICENSE
 ├── scripts/                 # Day 0 + demo helpers
