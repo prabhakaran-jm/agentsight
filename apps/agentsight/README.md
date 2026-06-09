@@ -28,6 +28,24 @@ ln -sf "$(pwd)" /opt/splunk/etc/apps/agentsight
 
 See [docs/agentsight-mvp-spec.md](../../docs/agentsight-mvp-spec.md) and [docs/mcp-audit-fieldmap.md](../../docs/mcp-audit-fieldmap.md).
 
+## Normalization saved search
+
+After MCP activity, run or schedule **AgentSight - Normalize MCP Audit**:
+
+```spl
+index=agentsight sourcetype=agentsight:mcp_audit
+| head 20
+| table _time mcp_user mcp_tool session_id spl_query outcome duration_ms
+```
+
+To enable automatic normalization every 5 minutes:
+
+```bash
+/opt/splunk/bin/splunk btool saved-searches list AgentSight\ -\ Normalize\ MCP\ Audit --debug
+# In Splunk Web: Settings > Searches, reports, and alerts > enable schedule on the search
+# Or set enableSched = 1 in local/savedsearches.conf and restart.
+```
+
 ## App structure
 
 ```
@@ -36,7 +54,7 @@ apps/agentsight/
 │   ├── app.conf
 │   ├── indexes.conf          # index=agentsight
 │   ├── props.conf            # sourcetype definitions
-│   ├── savedsearches.conf    # detections + normalization (upcoming)
+│   ├── savedsearches.conf    # normalization + detections (detections upcoming)
 │   ├── alert_actions.conf    # agentsight_investigate (upcoming)
 │   └── commands.conf         # agentsight_explain (upcoming)
 ├── bin/
