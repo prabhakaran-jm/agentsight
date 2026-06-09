@@ -89,6 +89,34 @@ export AGENTSIGHT_AI_MODEL="foundation-sec-8b-instruct"
 export AGENTSIGHT_AI_CONNECTION=""
 ```
 
+## Investigation alert action
+
+Saved detections trigger **`agentsight_investigate`** (max 5m). The handler runs a `splunklib.ai` agent
+with local tools; on failure it falls back to a scripted investigation loop.
+
+Install Python dependencies into the app (if `splunklib.ai` is not on the Splunk Python path):
+
+```bash
+python3 -m pip install -r apps/agentsight/requirements.txt -t apps/agentsight/bin/lib
+sudo systemctl restart Splunkd.service
+```
+
+Ollama chat model for the agent (separate from `| ai` classify in tools):
+
+```bash
+export AGENTSIGHT_OLLAMA_URL="http://127.0.0.1:11434/v1"
+export AGENTSIGHT_OLLAMA_CHAT_MODEL="llama3.2:latest"
+```
+
+### Test alert action
+
+1. Run `scripts/demo_mcp_burst.sh`
+2. **Settings → Searches → AgentSight - MCP Tool Loop → Run**
+3. Enable alert action **AgentSight Investigate** on the search → **Trigger Actions**
+4. Verify: `index=agentsight sourcetype=agentsight:case | head 5`
+5. Logs: `index=_internal source="*/agentsight.log"`
+```
+
 ## App structure
 
 ```
@@ -98,7 +126,7 @@ apps/agentsight/
 │   ├── indexes.conf          # index=agentsight
 │   ├── props.conf            # sourcetype definitions
 │   ├── savedsearches.conf    # normalization + 3 detection rules
-│   ├── alert_actions.conf    # agentsight_investigate (stub handler; full agent Task 5)
+│   ├── alert_actions.conf    # agentsight_investigate custom alert action
 │   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
 │   └── commands.conf         # agentsight_explain (upcoming)
 ├── bin/

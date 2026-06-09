@@ -314,5 +314,144 @@ def clear_pending_actions(case_id: str | None = None) -> None:
         _PENDING_ACTIONS.clear()
 
 
+class SimpleToolContext:
+    """Minimal context for direct tool calls outside the MCP tool server."""
+
+    def __init__(self, service: Any, logger: Any) -> None:
+        self._service = service
+        self._logger = logger
+
+    @property
+    def service(self) -> Any:
+        return self._service
+
+    @property
+    def logger(self) -> Any:
+        return self._logger
+
+
+def _investigation_spl_for_rule(trigger_rule: str, actor: str) -> str:
+    actor_esc = _escape_spl_string(actor or "*")
+    if trigger_rule == "mcp_scope_violation":
+        return (
+            f"index=_audit sourcetype=audittrail action=search user=\"{actor_esc}\" earliest=-1h "
+            "| rex field=search \"index\\s*=\\s*\\\"?(?<queried_index>[a-zA-Z0-9_*-]+)\" "
+            "| stats count by queried_index search"
+        )
+    if trigger_rule == "mcp_off_hours_burst":
+        return (
+            "index=_internal sourcetype=mcp_server rpc_method=tools/call "
+            f"username=\"{actor_esc}\" earliest=-24h "
+            "| spath | eval hour=strftime(_time, \"%H\") "
+            "| stats count by hour tool_name"
+        )
+    return (
+        "index=_internal sourcetype=mcp_server rpc_method=tools/call "
+        f"username=\"{actor_esc}\" earliest=-1h "
+        "| spath | stats count by tool_name request_id"
+    )
+
+
+def run_scripted_investigation(service: Any, logger: Any, alert_row: dict[str, str]) -> str:
+    """
+    Deterministic investigation loop (<=5 tool equivalents) when the LLM agent
+    is unavailable or times out. Returns case_id.
+    """
+    ctx = SimpleToolContext(service, logger)
+    case_id = new_case_id()
+    clear_pending_actions(case_id)
+
+    trigger_rule = alert_row.get("trigger_rule", "unknown")
+    severity = alert_row.get("severity", "medium")
+    actor = (
+        alert_row.get("actor")
+        or alert_row.get("username")
+        or alert_row.get("mcp_user")
+        or alert_row.get("user")
+        or "unknown"
+    )
+    session_id = alert_row.get("session_id") or alert_row.get("request_id") or ""
+    description = alert_row.get("description", f"AgentSight alert: {trigger_rule}")
+
+    step = 1
+    context = get_alert_context(ctx, trigger_rule, session_id or None, actor)
+    log_investigation_step(
+        ctx,
+        case_id,
+        step,
+        "get_alert_context",
+        json.dumps({"trigger_rule": trigger_rule, "actor": actor}),
+        json.dumps({"event_count": context.get("event_count", 0)})[:4000],
+    )
+    step += 1
+
+    inv_spl = _investigation_spl_for_rule(trigger_rule, actor)
+    search_result = run_investigation_search(ctx, inv_spl, earliest="-1h", row_limit=50)
+    sid = search_result.get("sid") or ""
+    log_investigation_step(
+        ctx,
+        case_id,
+        step,
+        "run_investigation_search",
+        inv_spl,
+        json.dumps(search_result.get("sample_rows", []))[:4000],
+        sid=sid or None,
+    )
+    step += 1
+
+    evidence = (
+        f"{description}. Context events: {context.get('event_count', 0)}. "
+        f"Search rows: {search_result.get('row_count', 0)}. "
+        f"Sample: {json.dumps(search_result.get('sample_rows', [])[:3])}"
+    )
+    classification_result = classify_agent_behavior(ctx, case_id, evidence, trigger_rule)
+    log_investigation_step(
+        ctx,
+        case_id,
+        step,
+        "classify_agent_behavior",
+        evidence[:2000],
+        json.dumps(classification_result)[:4000],
+    )
+    step += 1
+
+    followup_spl = _investigation_spl_for_rule(trigger_rule, actor) + " | head 20"
+    queue_proposed_action(
+        ctx,
+        case_id,
+        f"action_{case_id}",
+        followup_spl,
+        "Analyst-approved read-only follow-up for MCP agent timeline review.",
+    )
+    log_investigation_step(
+        ctx,
+        case_id,
+        step,
+        "queue_proposed_action",
+        followup_spl,
+        "queued",
+    )
+
+    findings = [
+        f"[sid={sid}] MCP investigation search returned {search_result.get('row_count', 0)} rows"
+        if sid
+        else f"MCP investigation search returned {search_result.get('row_count', 0)} rows",
+        description,
+    ]
+    create_case(
+        ctx,
+        case_id,
+        trigger_rule,
+        severity,
+        actor,
+        description,
+        findings,
+        [sid] if sid else [],
+        classification_result.get("classification", "suspicious"),
+        status="awaiting_approval",
+    )
+    return case_id
+
+
 if __name__ == "__main__":
     registry.run()
