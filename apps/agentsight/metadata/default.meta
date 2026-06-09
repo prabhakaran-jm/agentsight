@@ -1,0 +1,26 @@
+[]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[indexes]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[props]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[transforms]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[savedsearches]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[alert_actions]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[commands]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[views]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[lookups]
+access = read : [ * ], write : [ admin, sc_admin ]
