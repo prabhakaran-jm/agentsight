@@ -135,6 +135,19 @@ index=agentsight (sourcetype=agentsight:approval OR sourcetype=agentsight:case) 
 | sort - _time
 | table _time sourcetype status decision new_case_status
 ```
+
+## Explain command (`| agentsight_explain`)
+
+Re-run agent reasoning from the search bar:
+
+```spl
+index=agentsight sourcetype=agentsight:case case_id=case_XXXXXXXX
+| agentsight_explain case_id=case_XXXXXXXX
+| table case_id classification explanation findings cited_sids suggested_spl
+```
+
+Uses Ollama + structured output; falls back to a scripted summary from case + investigation steps.
+```
 ```
 
 ## App structure
@@ -148,7 +161,7 @@ apps/agentsight/
 │   ├── savedsearches.conf    # normalization + 3 detection rules
 │   ├── alert_actions.conf    # agentsight_investigate custom alert action
 │   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
-│   ├── commands.conf         # agentsight_approve (+ agentsight_explain Task 7)
+│   ├── commands.conf         # agentsight_approve, agentsight_explain
 │   └── data/ui/views/agentsight_dashboard.xml
 ├── bin/
 │   ├── setup_logging.py
