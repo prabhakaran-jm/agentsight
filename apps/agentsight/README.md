@@ -115,6 +115,26 @@ export AGENTSIGHT_OLLAMA_CHAT_MODEL="llama3.2:latest"
 3. Enable alert action **AgentSight Investigate** on the search → **Trigger Actions**
 4. Verify: `index=agentsight sourcetype=agentsight:case | head 5`
 5. Logs: `index=_internal source="*/agentsight.log"`
+
+## Dashboard and async approval
+
+Open **AgentSight** in the app nav (or `/app/agentsight/agentsight_dashboard`).
+
+1. **MCP Activity Timeline** — live `mcp_server` tool calls (30s refresh)
+2. **Active Cases** / **Pending Agent Actions** — `agentsight:case` events
+3. **Approve / Deny** — enter `case_id` + `action_id`, run:
+
+```spl
+| agentsight_approve case_id=case_abc123 action_id=action_case_abc123 decision=approved
+```
+
+Verify approval:
+
+```spl
+index=agentsight (sourcetype=agentsight:approval OR sourcetype=agentsight:case) case_id=case_abc123
+| sort - _time
+| table _time sourcetype status decision new_case_status
+```
 ```
 
 ## App structure
@@ -128,7 +148,8 @@ apps/agentsight/
 │   ├── savedsearches.conf    # normalization + 3 detection rules
 │   ├── alert_actions.conf    # agentsight_investigate custom alert action
 │   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
-│   └── commands.conf         # agentsight_explain (upcoming)
+│   ├── commands.conf         # agentsight_approve (+ agentsight_explain Task 7)
+│   └── data/ui/views/agentsight_dashboard.xml
 ├── bin/
 │   ├── setup_logging.py
 │   ├── tools.py              # splunklib.ai local tools (6 tools)
