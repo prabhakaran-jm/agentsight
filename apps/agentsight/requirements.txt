@@ -1,3 +1,4 @@
 # Install with Splunk's Python (NOT system python3):
 #   bash ../../scripts/install_agentsight_deps.sh
-splunk-sdk[ai]>=3.0.0
+# [openai] provides langchain_openai — required for OpenAIModel (Ollama chat backend)
+splunk-sdk[ai,openai]>=3.0.0

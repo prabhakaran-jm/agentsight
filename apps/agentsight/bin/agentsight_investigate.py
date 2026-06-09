@@ -85,10 +85,10 @@ def _load_ollama_model():
     from splunklib.ai import OpenAIModel
 
     base_url = os.environ.get("AGENTSIGHT_OLLAMA_URL", "http://127.0.0.1:11434/v1")
-    model = os.environ.get(
-        "AGENTSIGHT_OLLAMA_CHAT_MODEL",
-        "hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0",
-    )
+    # splunklib.ai agent requires tool/function calling. Foundation-Sec GGUF in Ollama
+    # does not support tools — use llama3.2 (or similar) here. Foundation-Sec runs in
+    # classify_agent_behavior via | ai (AGENTSIGHT_AI_MODEL in tools.py).
+    model = os.environ.get("AGENTSIGHT_OLLAMA_CHAT_MODEL", "llama3.2:latest")
     return OpenAIModel(model=model, base_url=base_url, api_key="ollama")
 
 
@@ -134,7 +134,7 @@ async def invoke_investigation_agent(
     import splunklib.ai.agent as agent_module
     from splunklib.ai import Agent
     from splunklib.ai.limits import AgentLimits
-    from splunklib.ai.tool_settings import LocalToolSettings, ToolAllowlist, ToolSettings
+    from splunklib.ai.tool_settings import ToolSettings
 
     from tools import clear_pending_actions, register_tools
 
@@ -152,10 +152,10 @@ async def invoke_investigation_agent(
         model=model,
         system_prompt=SYSTEM_PROMPT,
         service=service,
-        tool_settings=ToolSettings(
-            local=LocalToolSettings(allowlist=ToolAllowlist(names=TOOL_ALLOWLIST)),
-            remote=None,
-        ),
+        # local=True — tools.py only registers AgentSight tools. Name allowlist hits an
+        # splunk-sdk bug: is_allowed() intersects tool.tags before checking names, and
+        # MCP tools expose tags=None (TypeError).
+        tool_settings=ToolSettings(local=True, remote=None),
         logger=logger,
         limits=limits,
     ) as agent:

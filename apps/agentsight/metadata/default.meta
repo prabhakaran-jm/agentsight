@@ -24,6 +24,15 @@ export = system
 
 [commands]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[commands/agentsightapprove]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+[commands/agentsightexplain]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
 
 [views]
 access = read : [ * ], write : [ admin, sc_admin ]

@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: MIT
 """Generating command: approve or deny queued MCP agent actions."""
 
-from __future__ import annotations
-
 import json
 import os
 import sys
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "lib"))
+_BIN_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _BIN_DIR)
+sys.path.insert(0, os.path.join(_BIN_DIR, "lib"))
 
 from splunklib.results import JSONResultsReader
 from splunklib.searchcommands import (
@@ -19,13 +19,6 @@ from splunklib.searchcommands import (
     Option,
     dispatch,
     validators,
-)
-
-from tools import (
-    SimpleToolContext,
-    _validate_readonly_spl,
-    log_investigation_step,
-    revoke_user_tokens,
 )
 
 _INDEX = "agentsight"
@@ -69,11 +62,13 @@ def _find_pending_action(case: dict[str, Any], action_id: str) -> dict[str, Any]
 
 
 def _run_readonly_search(service: Any, spl: str) -> tuple[str | None, list[dict[str, Any]]]:
+    from tools import _normalize_oneshot_spl, _validate_readonly_spl
+
     _validate_readonly_spl(spl)
     rows = list(
         JSONResultsReader(
             service.jobs.oneshot(
-                spl,
+                _normalize_oneshot_spl(spl),
                 earliest_time="-1h",
                 latest_time="now",
                 output_mode="json",
@@ -91,10 +86,16 @@ class AgentSightApproveCommand(GeneratingCommand):
 
     case_id = Option(require=True)
     action_id = Option(require=True)
-    decision = Option(require=True, validate=validators.Match("(?i)^(approved|denied)$"))
+    decision = Option(require=True, validate=validators.Match("decision", "(?i)^(approved|denied)$"))
     actor = Option(require=False, default="admin")
 
     def generate(self) -> Iterator[dict[str, Any]]:
+        from tools import (
+            SimpleToolContext,
+            log_investigation_step,
+            revoke_user_tokens,
+        )
+
         service = self.service
         if service is None:
             yield {

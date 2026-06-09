@@ -52,8 +52,8 @@ flowchart TD
 
     subgraph analyst [Analyst surfaces and response]
         Dash[agentsight_dashboard]
-        Approve["| agentsight_approve"]
-        Explain["| agentsight_explain"]
+        Approve["| agentsightapprove"]
+        Explain["| agentsightexplain"]
         Quarantine["revoke_user_tokens REST authorization/tokens"]
         AgentsightIdx --> Dash
         Dash --> Approve
@@ -71,7 +71,7 @@ flowchart TD
 | **`splunklib.ai` Agent** | Investigation and explain agents with local tools |
 | **`| ai` command** (AI Toolkit) | `classify_agent_behavior` via Foundation-Sec open weights in Ollama (Path A); optional Splunk Hosted Models clip (Path B) |
 | **Custom alert action** | `agentsight_investigate` on detection saved searches |
-| **Custom search commands** | `agentsight_approve`, `agentsight_explain` |
+| **Custom search commands** | `agentsightapprove`, `agentsightexplain` |
 
 ## Data flow
 
@@ -80,9 +80,9 @@ flowchart TD
 3. **Normalization** saved search copies events to `index=agentsight` / `agentsight:mcp_audit`.
 4. **Detection** saved searches fire on runaway loops, scope violations, off-hours bursts, MCP-attributed data-export SPL, and prompt-injection signatures in tool arguments.
 5. **`agentsight_investigate`** runs an AI agent (max ~6 tool calls, 4 min budget) → indexes `agentsight:case`. For critical findings it queues a **quarantine** action alongside any read-only follow-up.
-6. **Dashboard** shows live MCP timeline + KPIs; analyst **approves** a queued SPL or **quarantine** via `agentsight_approve`.
+6. **Dashboard** shows live MCP timeline + KPIs; analyst **approves** a queued SPL or **quarantine** via `agentsightapprove`.
 7. **Quarantine** (on approval only) calls `revoke_user_tokens` → Splunk REST `authorization/tokens` to revoke the rogue agent's tokens; case status → `contained`.
-8. **`| agentsight_explain`** re-explains the case in the search bar.
+8. **`| agentsightexplain`** re-explains the case in the search bar.
 
 ## Index and sourcetypes
 
@@ -110,5 +110,5 @@ agentsight/
 1. `scripts/demo_mcp_burst.sh` → hero timeline spikes
 2. Detection fires → `agentsight_investigate` → case `awaiting_approval`
 3. Dashboard approve → follow-up SPL results
-4. `| agentsight_explain case_id=...`
+4. `| agentsightexplain case_id=...`
 

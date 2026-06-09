@@ -4,7 +4,7 @@
 
 Observability for the autonomous workforce touching your Splunk data — built for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.com/) (**Security** track).
 
-AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** with **Foundation-Sec open weights in Ollama** (Path A — one-machine demo), and supports async analyst approval plus **`| agentsight_explain`** in the search bar.
+AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** with **Foundation-Sec open weights in Ollama** (Path A — one-machine demo), and supports async analyst approval plus **`| agentsightexplain`** in the search bar.
 
 ## What you can do with this
 
@@ -17,8 +17,8 @@ AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP
 | Detect prompt-injection payloads | Saved search **AgentSight - MCP Prompt Injection** |
 | Auto-investigate with AI | Alert action **AgentSight Investigate** on detection searches |
 | Approve or deny a proposed fix | Dashboard → *Approve / Deny Queued Action* (needs `case_id` + `action_id`) |
-| Quarantine a rogue agent (revoke tokens) | Approve a `quarantine` action → `agentsight_approve` revokes the agent's Splunk tokens |
-| Get a plain-English case summary | Search: `\| agentsight_explain case_id=case_XXXXXXXX` |
+| Quarantine a rogue agent (revoke tokens) | Approve a `quarantine` action → `agentsightapprove` revokes the agent's Splunk tokens |
+| Get a plain-English case summary | Search: `\| agentsightexplain case_id=case_XXXXXXXX` |
 
 The dashboard shows live MCP traffic from `index=_internal sourcetype=mcp_server`. **Cases and approvals only appear after** you run a detection and the investigate alert action fires.
 
@@ -107,12 +107,15 @@ Hosted Foundation-Sec runs on **Splunk Cloud only**. For a single-machine submis
 bash scripts/setup_foundation_sec_ollama.sh
 ```
 
-Then set (or rely on defaults in `apps/agentsight/default/ai.conf`):
+Then set classify model (defaults in `apps/agentsight/default/ai.conf`):
 
 ```bash
-export AGENTSIGHT_OLLAMA_CHAT_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
 export AGENTSIGHT_AI_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
+export AGENTSIGHT_AI_PROVIDER='Ollama'
+export AGENTSIGHT_AI_CONNECTION='ollama_local'
 ```
+
+**Two-model split:** `splunklib.ai` investigation agent needs **tool calling** → default `AGENTSIGHT_OLLAMA_CHAT_MODEL=llama3.2:latest`. Foundation-Sec runs in **`classify_agent_behavior`** via `| ai` (not as the tool-orchestration chat model).
 
 Optional **Path B** (≤1 day): Splunk Cloud trial clip with **Splunk Hosted Models** visible — same prompt, ~15 seconds. See [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md).
 
@@ -152,7 +155,7 @@ index=agentsight sourcetype=agentsight:case earliest=-1h
 ```spl
 index=agentsight sourcetype=agentsight:case
 | head 1
-| agentsight_explain case_id=case_XXXXXXXX
+| agentsightexplain case_id=case_XXXXXXXX
 ```
 
 ## Day 0 verification
@@ -180,7 +183,7 @@ Field map: [docs/mcp-audit-fieldmap.md](docs/mcp-audit-fieldmap.md)
 3. **Detect** — **AgentSight - MCP Tool Loop**
 4. **Investigate** — alert action **AgentSight Investigate**
 5. **Dashboard** — approve pending action
-6. **Explain** — `| agentsight_explain case_id=...`
+6. **Explain** — `| agentsightexplain case_id=...`
 7. **Verify** — `index=agentsight sourcetype=agentsight:* earliest=-1h | stats count by sourcetype`
 
 Saved searches ship with `enableSched = 0`. Enable schedules in **Settings → Searches** or set `enableSched = 1` in `local/savedsearches.conf` for hands-free alerts.
@@ -192,7 +195,7 @@ Saved searches ship with `enableSched = 0`. Enable schedules in **Settings → S
 | `SPLUNK_MCP_TOKEN` | — | MCP encrypted token |
 | `SPLUNK_MCP_URL` | `https://localhost:8089/services/mcp` | MCP endpoint |
 | `AGENTSIGHT_OLLAMA_URL` | `http://127.0.0.1:11434/v1` | Agent chat model |
-| `AGENTSIGHT_OLLAMA_CHAT_MODEL` | `hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0` | Agent chat model (Foundation-Sec) |
+| `AGENTSIGHT_OLLAMA_CHAT_MODEL` | `llama3.2:latest` | `splunklib.ai` agent (must support tools) |
 | `AGENTSIGHT_AI_PROVIDER` | `Ollama` | `\| ai` in classify tool |
 | `AGENTSIGHT_AI_MODEL` | `hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0` | `\| ai` classify model |
 | `AGENTSIGHT_AI_CONNECTION` | `ollama_local` | AI Toolkit connection name |
@@ -214,12 +217,12 @@ Events land in `sourcetype=agentsight:demo` — **not** a substitute for real MC
 - **`splunklib.ai`** — investigation + explain agents, local tools in `bin/tools.py`
 - **`| ai`** — `classify_agent_behavior` (Ollama / Foundation-Sec)
 - **Custom alert action** — `agentsight_investigate`
-- **Custom commands** — `agentsight_approve`, `agentsight_explain`
+- **Custom commands** — `agentsightapprove`, `agentsightexplain`
 - **Automated response** — `revoke_user_tokens` (Splunk REST `authorization/tokens`) quarantines a rogue agent on analyst approval
 
 ## Detect → investigate → contain
 
-AgentSight is not detection-only. Five agent-native detections feed one investigation agent, and critical cases (scope violation, data exfiltration, prompt injection) queue a **quarantine** action. On analyst approval, `agentsight_approve` calls Splunk's `authorization/tokens` REST endpoint to revoke the rogue agent's tokens — its next MCP call fails auth, visible live on the MCP Activity Timeline. Containment **never** runs without human approval (governance by design), mirroring the `_FORBIDDEN_SPL` guard the investigation agent applies to itself.
+AgentSight is not detection-only. Five agent-native detections feed one investigation agent, and critical cases (scope violation, data exfiltration, prompt injection) queue a **quarantine** action. On analyst approval, `agentsightapprove` calls Splunk's `authorization/tokens` REST endpoint to revoke the rogue agent's tokens — its next MCP call fails auth, visible live on the MCP Activity Timeline. Containment **never** runs without human approval (governance by design), mirroring the `_FORBIDDEN_SPL` guard the investigation agent applies to itself.
 
 ## Documentation
 

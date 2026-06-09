@@ -26,17 +26,22 @@ printf '%s\n' \
   | gzip -c > "${RESULTS}"
 chmod a+r "${RESULTS}"
 
-# Get session key for local Splunk
-SESSION_KEY="$(
+# Get session key for local Splunk (admin password — same as Splunk Web login)
+LOGIN_RESPONSE="$(
   curl -sk -u "admin:${SPLUNK_PASSWORD}" \
     https://localhost:8089/services/auth/login \
     -d username=admin \
-    -d password="${SPLUNK_PASSWORD}" \
-  | sed -n 's/.*<sessionKey>\(.*\)<\/sessionKey>.*/\1/p'
+    -d password="${SPLUNK_PASSWORD}"
 )"
+SESSION_KEY="$(printf '%s' "${LOGIN_RESPONSE}" | sed -n 's/.*<sessionKey>\(.*\)<\/sessionKey>.*/\1/p')"
 
 if [[ -z "${SESSION_KEY}" ]]; then
   echo "Failed to obtain Splunk session key" >&2
+  LOGIN_ERR="$(printf '%s' "${LOGIN_RESPONSE}" | sed -n 's/.*<msg[^>]*>\(.*\)<\/msg>.*/\1/p' | head -1)"
+  if [[ -n "${LOGIN_ERR}" ]]; then
+    echo "Splunk login error: ${LOGIN_ERR}" >&2
+  fi
+  echo "Hint: export SPLUNK_PASSWORD to your Splunk admin password (Splunk Web login)." >&2
   exit 1
 fi
 

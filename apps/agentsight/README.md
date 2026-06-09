@@ -10,7 +10,7 @@ Native Splunk app for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.
 - Detects agent/MCP-specific misbehavior (tool loops, scope violations, off-hours bursts, data exfiltration SPL)
 - Investigates with a **`splunklib.ai` agent** and `| ai` classification (Foundation-Sec via Ollama — Path A)
 - Async analyst approval on dashboard
-- Re-run agent reasoning from the search bar via `| agentsight_explain`
+- Re-run agent reasoning from the search bar via `| agentsightexplain`
 
 ## Install
 
@@ -128,7 +128,7 @@ Open **AgentSight** in the app nav (or `/app/agentsight/agentsight_dashboard`).
 3. **Approve / Deny** — enter `case_id` + `action_id`, run:
 
 ```spl
-| agentsight_approve case_id=case_abc123 action_id=action_case_abc123 decision=approved
+| agentsightapprove case_id=case_abc123 action_id=action_case_abc123 decision=approved
 ```
 
 Verify approval:
@@ -139,13 +139,13 @@ index=agentsight (sourcetype=agentsight:approval OR sourcetype=agentsight:case) 
 | table _time sourcetype status decision new_case_status
 ```
 
-## Explain command (`| agentsight_explain`)
+## Explain command (`| agentsightexplain`)
 
 Re-run agent reasoning from the search bar:
 
 ```spl
 index=agentsight sourcetype=agentsight:case case_id=case_XXXXXXXX
-| agentsight_explain case_id=case_XXXXXXXX
+| agentsightexplain case_id=case_XXXXXXXX
 | table case_id classification explanation findings cited_sids suggested_spl
 ```
 
@@ -164,7 +164,7 @@ apps/agentsight/
 │   ├── savedsearches.conf    # normalization + 5 detection rules
 │   ├── alert_actions.conf    # agentsight_investigate custom alert action
 │   ├── ai.conf               # Ollama / Foundation-Sec | ai settings
-│   ├── commands.conf         # agentsight_approve, agentsight_explain
+│   ├── commands.conf         # agentsightapprove, agentsightexplain (SPL names; no underscores)
 │   └── data/ui/views/agentsight_dashboard.xml
 ├── bin/
 │   ├── setup_logging.py

@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Generating command: re-explain an AgentSight case from the search bar."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 import os
@@ -11,11 +9,13 @@ import sys
 from datetime import datetime
 from typing import Any, Iterator, Literal
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "lib"))
+_BIN_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _BIN_DIR)
+sys.path.insert(0, os.path.join(_BIN_DIR, "lib"))
 
-from pydantic import BaseModel, Field
 from splunklib.results import JSONResultsReader
 from splunklib.searchcommands import Configuration, GeneratingCommand, Option, dispatch
+from pydantic import BaseModel, Field
 
 _INDEX = "agentsight"
 

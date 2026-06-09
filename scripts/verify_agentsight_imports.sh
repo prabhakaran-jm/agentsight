@@ -28,6 +28,8 @@ from tools import run_scripted_investigation, register_tools
 print('OK: splunklib, pydantic, tools (no registry at import)')
 register_tools()
 print('OK: register_tools()')
+import langchain_openai
+print('OK: langchain_openai (splunk-sdk[openai] — required for investigation agent)')
 "
 
 echo "=== agentsight.log (last 20 lines) ==="
