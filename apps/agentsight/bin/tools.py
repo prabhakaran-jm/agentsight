@@ -1,8 +1,15 @@
 # SPDX-License-Identifier: MIT
 """AgentSight local tools for splunklib.ai investigation agent."""
 
-import json
 import os
+import sys
+
+_BIN_DIR = os.path.dirname(os.path.abspath(__file__))
+_LIB_DIR = os.path.join(_BIN_DIR, "lib")
+if _LIB_DIR not in sys.path:
+    sys.path.insert(0, _LIB_DIR)
+
+import json
 import re
 import uuid
 from datetime import datetime, timezone
@@ -49,6 +56,14 @@ def _submit_event(ctx: ToolContext, sourcetype: str, event: dict[str, Any]) -> N
     ctx.service.indexes[_INDEX].submit(payload, sourcetype=f"agentsight:{sourcetype}")
 
 
+def _normalize_oneshot_spl(spl: str) -> str:
+    """REST oneshot requires a leading ``search`` command."""
+    trimmed = spl.strip()
+    if re.match(r"^search\b", trimmed, re.IGNORECASE):
+        return trimmed
+    return f"search {trimmed}"
+
+
 def _oneshot_json(
     ctx: ToolContext,
     spl: str,
@@ -57,7 +72,7 @@ def _oneshot_json(
 ) -> tuple[str | None, list[dict[str, Any]]]:
     """Run oneshot search; return (sid if available, result rows)."""
     job = ctx.service.jobs.oneshot(
-        spl,
+        _normalize_oneshot_spl(spl),
         earliest_time=earliest,
         latest_time=latest,
         output_mode="json",

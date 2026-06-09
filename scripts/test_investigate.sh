@@ -5,17 +5,26 @@ set -euo pipefail
 : "${SPLUNK_HOME:=/opt/splunk}"
 : "${SPLUNK_PASSWORD:?Set SPLUNK_PASSWORD}"
 
+APP_BIN="${SPLUNK_HOME}/etc/apps/agentsight/bin"
 BIN="$(cd "$(dirname "$0")/../apps/agentsight/bin" && pwd)"
+INVESTIGATE="${APP_BIN}/agentsight_investigate.py"
+if [[ ! -x "${INVESTIGATE}" ]]; then
+  INVESTIGATE="${BIN}/agentsight_investigate.py"
+fi
 TMP="$(mktemp -d)"
 RESULTS="${TMP}/results.csv.gz"
 PAYLOAD="${TMP}/payload.json"
 trap 'rm -rf "${TMP}"' EXIT
+
+# mktemp dirs are 700 — splunk user must read results_file when run via sudo -u splunk
+chmod a+rX "${TMP}"
 
 # Minimal detection row
 printf '%s\n' \
   'trigger_rule,severity,actor,username,mcp_user,session_id,description' \
   'mcp_tool_loop,high,admin,admin,admin,test_sess_001,MCP agent admin made 6 splunk_run_query calls in 10m' \
   | gzip -c > "${RESULTS}"
+chmod a+r "${RESULTS}"
 
 # Get session key for local Splunk
 SESSION_KEY="$(
@@ -43,10 +52,10 @@ EOF
 echo "Running agentsight_investigate with test payload..."
 if id splunk &>/dev/null; then
   sudo -u splunk "${SPLUNK_HOME}/bin/splunk" cmd python3 \
-    "${BIN}/agentsight_investigate.py" --execute < "${PAYLOAD}"
+    "${INVESTIGATE}" --execute < "${PAYLOAD}"
 else
   "${SPLUNK_HOME}/bin/splunk" cmd python3 \
-    "${BIN}/agentsight_investigate.py" --execute < "${PAYLOAD}"
+    "${INVESTIGATE}" --execute < "${PAYLOAD}"
 fi
 
 echo ""

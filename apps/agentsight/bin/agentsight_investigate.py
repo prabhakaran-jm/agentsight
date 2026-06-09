@@ -97,6 +97,7 @@ def connect_service(alert_payload: dict[str, Any]) -> client.Service:
         token=session_key,
         host=splunk_uri.hostname,
         port=splunk_uri.port,
+        app="search",
         autologin=True,
     )
 
@@ -121,11 +122,16 @@ async def invoke_investigation_agent(
     service: client.Service,
     investigation: AlertInvestigationInput,
 ) -> None:
+    import splunklib.ai.agent as agent_module
     from splunklib.ai import Agent
     from splunklib.ai.limits import AgentLimits
     from splunklib.ai.tool_settings import LocalToolSettings, ToolAllowlist, ToolSettings
 
     from tools import clear_pending_actions, register_tools
+
+    # Vendored splunk-sdk lives under bin/lib; locate_app() cannot find tools.py there.
+    agent_module._testing_local_tools_path = os.path.join(_BIN_DIR, "tools.py")
+    agent_module._testing_app_id = "agentsight"
 
     register_tools()
     clear_pending_actions(investigation.case_id)
