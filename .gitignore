@@ -1,0 +1,55 @@
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Splunk local / runtime
+local/
+*.log
+splunk-*.tar.gz
+$SPLUNK_HOME/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+.python-version
+
+# Node (mcp-remote / tooling)
+node_modules/
+.npm/
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Packaged / generated artifacts
+*.tar
+*.zip
+*.splunk
+
+docs/
