@@ -1,0 +1,9 @@
+# Force Unix line endings for scripts (avoids bash\r errors on Linux)
+*.sh text eol=lf
+*.spl text eol=lf
+*.py text eol=lf
+*.conf text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.csv text eol=lf
+*.txt text eol=lf
