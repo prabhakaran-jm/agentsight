@@ -1,4 +1,10 @@
+<!-- Splunk 10.4 modern-nav per-view icons.
+     icon values are Splunk classic icon-font names (lowercase, no hyphens),
+     NOT react-icons kebab-case. Valid examples used by Splunk_Monitoring_Console:
+     chartgauge, organizernotebook, layoutoverview, magnifier, pulse, cog.
+     Invalid names like "chart bar" or "box checked" fall back to an "A" monogram.
+     Nav changes require a Splunk restart to take effect. -->
 <nav search_view="search" color="#1e525c">
-  <view name="agentsight_dashboard" default="true" />
-  <view name="agentsight_approval" />
+  <view name="agentsight_dashboard" default="true" icon="chartgauge" />
+  <view name="agentsight_approval" icon="organizernotebook" />
 </nav>

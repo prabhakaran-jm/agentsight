@@ -172,6 +172,25 @@ apps/agentsight/
 │   ├── agentsight_investigate.py
 │   ├── agentsight_explain.py
 │   └── agentsight_approve.py
-└── lookups/
-    └── agent_index_allowlist.csv
+├── lookups/
+│   └── agent_index_allowlist.csv
+└── static/                   # launcher icons (appIcon*, appLogo*) — see below
 ```
+
+## App branding / icons
+
+Launcher tiles (`static/appIcon*.png`, `static/appLogo*.png`) are generated — solid
+`#1e525c` rounded square with a white eye glyph, full-bleed (no white letterboxing),
+crisp at 36px via supersampling. To regenerate after a color/glyph change:
+
+```bash
+python scripts/build_app_icons.py          # needs Pillow: pip install pillow
+# copy the app to Splunk, then refresh the cached assets:
+#   Windows: Copy-Item -Recurse -Force apps/agentsight/static "C:\Program Files\Splunk\etc\apps\agentsight\"
+sudo -u splunk /opt/splunk/bin/splunk restart   # or restart the Windows Splunkd service
+# then visit http://localhost:8000/en-US/_bump and hard-refresh the browser
+```
+
+In-app left-nav icons are **Splunk React icon names** on `<view>` in
+`default/data/ui/nav/default.xml` (`icon="chart-bar"`, `icon="box-checked"`) — not PNGs.
+This is required on Splunk 10.4+; without it the nav shows generic "A" monograms.

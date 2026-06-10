@@ -39,3 +39,7 @@ access = read : [ * ], write : [ admin, sc_admin ]
 
 [lookups]
 access = read : [ * ], write : [ admin, sc_admin ]
+
+[admin:all]
+[static]
+access = read : [ * ]
