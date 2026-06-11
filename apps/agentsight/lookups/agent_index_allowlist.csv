@@ -1,2 +1,3 @@
 mcp_user,allowed_indexes
 admin,"main,agentsight"
+mcp-demo-agent,"main,agentsight"

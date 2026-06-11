@@ -5,6 +5,6 @@
      Invalid names like "chart bar" or "box checked" fall back to an "A" monogram.
      Nav changes require a Splunk restart to take effect. -->
 <nav search_view="search" color="#1e525c">
-  <view name="agentsight_dashboard" default="true" icon="chartgauge" />
-  <view name="agentsight_approval" icon="organizernotebook" />
+  <view name="agentsight_dashboard" default="true" label="Dashboard" icon="chartgauge" />
+  <view name="agentsight_approval" label="Approve" icon="organizernotebook" />
 </nav>

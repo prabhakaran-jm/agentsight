@@ -46,3 +46,4 @@ EOF
 done
 
 echo "Done. Run saved search: AgentSight - MCP Tool Loop"
+echo "Note: Rule 1 is severity=high — quarantine is NOT queued. For quarantine demo use demo_mcp_scope_violation.sh with mcp-demo-agent (see DEMO_AGENT_SETUP.md)."

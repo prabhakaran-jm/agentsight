@@ -67,9 +67,15 @@ bash scripts/demo_mcp_burst.sh
 # Then in Splunk Web run: AgentSight - MCP Tool Loop
 ```
 
-### Demo: trigger Rule 2
+### Demo: trigger Rule 2 (quarantine — use `mcp-demo-agent`, not `admin`)
 
-Run an MCP query targeting a forbidden index, e.g. `index=secrets | head 1`, via `splunk_run_query`.
+```bash
+export SPLUNK_MCP_TOKEN='token-for-mcp-demo-agent'
+bash ../../scripts/demo_mcp_scope_violation.sh
+# Run: AgentSight - MCP Index Scope Violation
+```
+
+See [scripts/DEMO_AGENT_SETUP.md](../../scripts/DEMO_AGENT_SETUP.md).
 
 ## Agent tools (`bin/tools.py`)
 
@@ -81,8 +87,11 @@ Registered for `splunklib.ai`:
 | `run_investigation_search` | Read-only oneshot SPL (max 50 rows) |
 | `log_investigation_step` | Audit trail to `agentsight:investigation_step` |
 | `classify_agent_behavior` | `\| ai` via Ollama (`default/ai.conf`) |
-| `queue_proposed_action` | Async approval queue (in-memory per alert run) |
+| `queue_proposed_action` | Async approval queue (read-only SPL follow-up) |
+| `queue_quarantine_action` | Queue token revocation for critical cases |
 | `create_case` | Index case to `agentsight:case` |
+
+`agentsightapprove` calls `revoke_user_tokens` when a `quarantine` action is approved.
 
 Override AI provider for Cloud demo:
 

@@ -82,6 +82,26 @@ sudo chown -R splunk:splunk /opt/splunk/etc/apps/agentsight
 sudo systemctl restart Splunkd.service
 ```
 
+### Windows (Splunk Enterprise on localhost)
+
+```powershell
+$SPLUNK_HOME = "C:\Program Files\Splunk"
+$REPO = "C:\Users\User\Projects\agentsight\apps\agentsight"
+
+Remove-Item -Recurse -Force "$SPLUNK_HOME\etc\apps\agentsight" -ErrorAction SilentlyContinue
+Copy-Item -Recurse $REPO "$SPLUNK_HOME\etc\apps\agentsight"
+
+# Python deps into Splunk's interpreter (elevated cmd/PowerShell)
+& "$SPLUNK_HOME\bin\splunk" cmd python3 -m pip install "splunk-sdk[ai]>=3.0.0" `
+  --target "$SPLUNK_HOME\etc\apps\agentsight\bin\lib"
+
+& "$SPLUNK_HOME\bin\splunk" restart
+```
+
+Open: **http://localhost:8000/en-US/app/agentsight/agentsight_dashboard** — then **http://localhost:8000/en-US/_bump** after icon updates.
+
+Rebuild launcher icons: `python scripts/build_app_icons.py` → redeploy app → restart → `_bump`.
+
 ### Verify install
 
 ```bash
@@ -98,6 +118,8 @@ Open: **http://localhost:8000/en-US/app/agentsight/agentsight_dashboard**
 | Dashboard panels say *Search is waiting for input* | Restart Splunk after dashboard update; timeline panels auto-run — approval fields are optional |
 | Empty MCP timeline | No MCP traffic yet — run `bash scripts/demo_mcp_burst.sh` |
 | Investigate / explain errors | Run `bash scripts/install_agentsight_deps.sh`; confirm Ollama is running |
+| `Unknown search command 'agentsightapprove'` | Run `bash scripts/install_agentsight_app.sh` and `bash scripts/verify_commands.sh`; restart Splunk |
+| Stretched / white launcher icon | Run `python scripts/build_app_icons.py` and redeploy `static/` |
 
 ## Foundation-Sec (Path A — do this first)
 
@@ -117,7 +139,9 @@ export AGENTSIGHT_AI_CONNECTION='ollama_local'
 
 **Two-model split:** `splunklib.ai` investigation agent needs **tool calling** → default `AGENTSIGHT_OLLAMA_CHAT_MODEL=llama3.2:latest`. Foundation-Sec runs in **`classify_agent_behavior`** via `| ai` (not as the tool-orchestration chat model).
 
-Optional **Path B** (≤1 day): Splunk Cloud trial clip with **Splunk Hosted Models** visible — same prompt, ~15 seconds. See [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md).
+Optional **Path B** (≤1 day): Splunk Cloud trial clip with **Splunk Hosted Models** visible — same prompt, ~15 seconds.
+
+**Submission:** [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) (rehearsal, video beats, Devpost draft).
 
 ## First demo (10 minutes)
 
@@ -166,12 +190,12 @@ bash scripts/day0_discovery_mcp.sh
 
 In Splunk Search, run queries from `scripts/day0_discovery_spl.txt`.
 
-AI Toolkit pre-flight (Ollama):
+AI Toolkit pre-flight (Foundation-Sec classify model):
 
 ```spl
 | makeresults count=1
 | eval prompt="Classify this MCP agent behavior: 15 identical splunk_run_query calls in 10 minutes."
-| ai provider=Ollama model=llama3.2:latest connection=ollama_local prompt="'{prompt}'"
+| ai provider=Ollama model="hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0" connection=ollama_local prompt="'$prompt$'"
 ```
 
 Field map: [docs/mcp-audit-fieldmap.md](docs/mcp-audit-fieldmap.md)
@@ -224,14 +248,27 @@ Events land in `sourcetype=agentsight:demo` — **not** a substitute for real MC
 
 AgentSight is not detection-only. Five agent-native detections feed one investigation agent, and critical cases (scope violation, data exfiltration, prompt injection) queue a **quarantine** action. On analyst approval, `agentsightapprove` calls Splunk's `authorization/tokens` REST endpoint to revoke the rogue agent's tokens — its next MCP call fails auth, visible live on the MCP Activity Timeline. Containment **never** runs without human approval (governance by design), mirroring the `_FORBIDDEN_SPL` guard the investigation agent applies to itself.
 
+**Quarantine safety:** never approve quarantine on `admin` — you will revoke your own session tokens. Use `mcp-demo-agent` for quarantine demos: [scripts/DEMO_AGENT_SETUP.md](scripts/DEMO_AGENT_SETUP.md).
+
+## Demo scripts
+
+| Script | Triggers |
+|--------|----------|
+| `scripts/demo_mcp_burst.sh` | Rule 1 — MCP Tool Loop (`severity=high`, no quarantine) |
+| `scripts/demo_mcp_scope_violation.sh` | Rule 2 — scope violation (`critical`, quarantine queued) |
+| `scripts/demo_mcp_exfil_probe.sh` | Rule 4 — data exfiltration SPL |
+| `scripts/demo_mcp_injection_probe.sh` | Rule 5 — prompt-injection signatures |
+| `scripts/rehearse_demo.sh` | Prints full rehearsal sequence |
+
 ## Documentation
 
 | Doc | Description |
 |-----|-------------|
+| [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) | Rehearsal, video beats, Devpost draft |
 | [architecture_diagram.md](architecture_diagram.md) | Architecture diagram (submission requirement) |
 | [docs/agentsight-mvp-spec.md](docs/agentsight-mvp-spec.md) | Full MVP specification |
 | [docs/mcp-audit-fieldmap.md](docs/mcp-audit-fieldmap.md) | Verified MCP audit schema |
-| [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md) | Video recording checklist |
+| [scripts/DEMO_AGENT_SETUP.md](scripts/DEMO_AGENT_SETUP.md) | Safe quarantine demo user |
 | [apps/agentsight/README.md](apps/agentsight/README.md) | App-level details |
 
 ## License

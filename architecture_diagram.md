@@ -109,6 +109,8 @@ agentsight/
 
 1. `scripts/demo_mcp_burst.sh` → hero timeline spikes
 2. Detection fires → `agentsight_investigate` → case `awaiting_approval`
-3. Dashboard approve → follow-up SPL results
+3. Dashboard approve → read-only SPL follow-up (or **quarantine** on `mcp-demo-agent` — see `scripts/DEMO_AGENT_SETUP.md`)
 4. `| agentsightexplain case_id=...`
+
+Full checklist: [SUBMISSION_CHECKLIST.md](../SUBMISSION_CHECKLIST.md)
 

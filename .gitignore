@@ -58,3 +58,5 @@ htmlcov/
 # Accidental self-symlink inside app package
 apps/agentsight/agentsight
 docs/
+SUBMISSION_CHECKLIST.md
+scripts/DEMO_AGENT_SETUP.md
