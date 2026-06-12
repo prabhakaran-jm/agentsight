@@ -17,6 +17,12 @@ Observability for MCP agents and autonomous clients hitting your Splunk data —
 
 [Architecture](#architecture) · [Install](#install) · [First demo](#first-demo-10-minutes) · [Judge quickstart](#judge-quickstart-live-demo-loop) · [Scripts](scripts/README.md)
 
+<br>
+
+<img src="assets/dashboard.png" alt="AgentSight dashboard — MCP tool call timeline, recent audit events, open cases, and pending approvals" width="900">
+
+*After a demo burst: 420 MCP tool calls, `mcp_tool_loop` cases, and actions awaiting analyst approval.*
+
 </div>
 
 ---
@@ -26,6 +32,7 @@ AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP
 ## Table of contents
 
 - [What you can do](#what-you-can-do-with-this)
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Install](#install)
@@ -55,6 +62,18 @@ AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP
 | Get a plain-English case summary | Search: `\| agentsightexplain case_id=case_XXXXXXXX` |
 
 The dashboard shows live MCP traffic from `index=_internal sourcetype=mcp_server`. **Cases and approvals only appear after** you run a detection and the investigate alert action fires.
+
+## Screenshots
+
+<div align="center">
+
+**Approve Actions** — click a queued row, choose Approve or Deny, submit to run `| agentsightapprove`
+
+<img src="assets/approve-actions.png" alt="Approve Actions view — queued mcp_tool_loop cases awaiting analyst decision" width="900">
+
+</div>
+
+The main dashboard (hero above) shows MCP KPIs, the activity timeline, recent tool calls, active cases, and the pending-approval queue.
 
 ### Judges: detection rules are not scheduled by default
 
