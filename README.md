@@ -1,10 +1,44 @@
+<div align="center">
+
 # AgentSight
 
 **Splunk watches the agents that use Splunk.**
 
-Observability for the autonomous workforce touching your Splunk data — built for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.com/) (**Security** track).
+Observability for MCP agents and autonomous clients hitting your Splunk data — built for the [Splunk Agentic Ops Hackathon](https://splunk.devpost.com/) (**Security** track).
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Hackathon](https://img.shields.io/badge/Splunk-Agentic%20Ops%20Hackathon-65A637?style=flat-square&logo=splunk&logoColor=white)](https://splunk.devpost.com/)
+[![Track](https://img.shields.io/badge/Track-Security-FF4B4B?style=flat-square)](https://splunk.devpost.com/)
+[![Splunk Enterprise](https://img.shields.io/badge/Splunk-Enterprise%209%2B-65A637?style=flat-square&logo=splunk&logoColor=white)](https://www.splunk.com/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-4A5568?style=flat-square)](#install)
+[![MCP Server](https://img.shields.io/badge/MCP-Server%20audit-5865F2?style=flat-square)](https://splunkbase.splunk.com/app/7931)
+[![splunklib.ai](https://img.shields.io/badge/splunklib.ai-investigation-0078D4?style=flat-square)](#splunk-ai-capabilities)
+[![Splunk AI Toolkit](https://img.shields.io/badge/%7C%20ai-Foundation--Sec%20%2F%20Ollama-9333EA?style=flat-square)](#foundation-sec-path-a--do-this-first)
+
+[Architecture](#architecture) · [Install](#install) · [First demo](#first-demo-10-minutes) · [Judge quickstart](#judge-quickstart-live-demo-loop) · [Scripts](scripts/README.md)
+
+</div>
+
+---
 
 AgentSight ingests **real Splunk MCP Server audit telemetry**, detects agent/MCP-specific misbehavior, investigates with **`splunklib.ai`**, classifies via **`| ai`** with **Foundation-Sec open weights in Ollama** (Path A — one-machine demo), and supports async analyst approval plus **`| agentsightexplain`** in the search bar.
+
+## Table of contents
+
+- [What you can do](#what-you-can-do-with-this)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Install](#install)
+- [Foundation-Sec (Path A)](#foundation-sec-path-a--do-this-first)
+- [First demo](#first-demo-10-minutes)
+- [MCP audit discovery](#mcp-audit-discovery)
+- [Judge quickstart](#judge-quickstart-live-demo-loop)
+- [Environment variables](#environment-variables)
+- [Splunk AI capabilities](#splunk-ai-capabilities)
+- [Detect → investigate → contain](#detect--investigate--contain)
+- [Scripts](#scripts)
+- [Documentation](#documentation)
+- [License](#license)
 
 ## What you can do with this
 
@@ -35,6 +69,16 @@ To run hands-free during a demo, enable the schedule on each detection rule in S
 ## Architecture
 
 See [architecture_diagram.md](architecture_diagram.md) for the system diagram and data flow.
+
+```text
+MCP agents ──► Splunk MCP Server audit ──► AgentSight detections
+      │                                              │
+      └──────────────────────────────────► splunklib.ai investigate
+                                                      │
+                                              analyst approve / explain
+                                                      │
+                                              agentsight index + dashboard
+```
 
 ## Prerequisites
 
@@ -300,4 +344,10 @@ Layout: **`scripts/sh/`** (Linux/macOS bash) · **`scripts/ps1/`** (Windows Powe
 
 ## License
 
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 MIT — see [LICENSE](LICENSE).
+
+</div>
