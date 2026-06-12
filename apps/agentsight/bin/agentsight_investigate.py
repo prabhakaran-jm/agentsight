@@ -19,18 +19,14 @@ sys.path.insert(0, os.path.join(_BIN_DIR, "lib"))
 
 try:
     from pydantic import BaseModel, Field
-    from setup_logging import setup_logging
+    from setup_logging import fix_ssl_cert_file_env, setup_logging
     from splunklib import client
 except Exception as import_error:
     sys.stderr.write(f"FATAL agentsight_investigate import failed: {import_error}\n")
     raise
 
+fix_ssl_cert_file_env()
 logger = setup_logging("agentsight")
-
-# Splunk may set SSL_CERT_FILE to a missing bundle on some installs.
-_CA_TRUST_STORE = "/opt/splunk/openssl/cert.pem"
-if os.environ.get("SSL_CERT_FILE") == _CA_TRUST_STORE and not os.path.exists(_CA_TRUST_STORE):
-    del os.environ["SSL_CERT_FILE"]
 
 SYSTEM_PROMPT = """You are AgentSight Investigation Agent — Splunk's analyst for AI agents and MCP clients
 that access this Splunk deployment. You investigate AGENT BEHAVIOR, not generic human threats.
@@ -202,13 +198,25 @@ def handle_alert() -> None:
             investigation.actor,
         )
 
+        from demo_mode import scripted_investigation_enabled
+
+        if scripted_investigation_enabled():
+            logger.info("Demo/scripted mode — skipping splunklib.ai investigation agent")
+            case_id = run_scripted_investigation(
+                service, logger, investigation.alert_row, case_id=investigation.case_id
+            )
+            logger.info("Scripted investigation created case %s", case_id)
+            return
+
         try:
             asyncio.run(invoke_investigation_agent(service, investigation))
         except Exception as agent_error:
             logger.exception(
                 "Agent investigation failed, using scripted fallback: %s", agent_error
             )
-            case_id = run_scripted_investigation(service, logger, investigation.alert_row)
+            case_id = run_scripted_investigation(
+                service, logger, investigation.alert_row, case_id=investigation.case_id
+            )
             logger.info("Scripted fallback created case %s", case_id)
 
     except Exception as exc:

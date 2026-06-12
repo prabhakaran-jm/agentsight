@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Dry-run agentsight_investigate with a fake alert payload (as splunk user).
+# Run agentsight_investigate with a test detection payload (Linux).
 set -euo pipefail
 
 : "${SPLUNK_HOME:=/opt/splunk}"
 : "${SPLUNK_PASSWORD:?Set SPLUNK_PASSWORD}"
 
 APP_BIN="${SPLUNK_HOME}/etc/apps/agentsight/bin"
-BIN="$(cd "$(dirname "$0")/../apps/agentsight/bin" && pwd)"
+BIN="$(cd "$(dirname "$0")/../../apps/agentsight/bin" && pwd)"
 INVESTIGATE="${APP_BIN}/agentsight_investigate.py"
 if [[ ! -x "${INVESTIGATE}" ]]; then
   INVESTIGATE="${BIN}/agentsight_investigate.py"

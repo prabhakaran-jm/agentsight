@@ -67,8 +67,10 @@
       <title>Pending Approvals</title>
       <single>
         <search>
-          <query>index=agentsight sourcetype=agentsight:case status=awaiting_approval
-| dedup case_id sortby -_time
+          <query>index=agentsight sourcetype="agentsight:case"
+| sort - _time
+| dedup case_id
+| where status="awaiting_approval"
 | stats count</query>
           <earliest>-7d</earliest>
           <latest>now</latest>
@@ -157,9 +159,10 @@
       <title>Pending Agent Actions</title>
       <table>
         <search>
-          <query>index=agentsight sourcetype=agentsight:case status=awaiting_approval
+          <query>index=agentsight sourcetype="agentsight:case"
 | sort - _time
 | dedup case_id
+| where status="awaiting_approval"
 | spath input=_raw path=pending_action_details{}
 | eval action_types=mvjoin('pending_action_details{}.action_type', ", ")
 | table _time case_id actor trigger_rule status action_types pending_actions

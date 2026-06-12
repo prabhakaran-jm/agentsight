@@ -6,7 +6,7 @@ set -euo pipefail
 : "${SPLUNK_PASSWORD:?Set SPLUNK_PASSWORD for admin login}"
 
 SCENARIO="${1:-mcp_tool_loop}"
-APP_BIN="$(cd "$(dirname "$0")/../apps/agentsight/bin" && pwd)"
+APP_BIN="$(cd "$(dirname "$0")/../../apps/agentsight/bin" && pwd)"
 GENERATOR="${APP_BIN}/demo_event_generator.py"
 
 run_as_splunk() {

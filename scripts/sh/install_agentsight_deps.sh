@@ -3,7 +3,7 @@
 set -euo pipefail
 
 : "${SPLUNK_HOME:=/opt/splunk}"
-APP_DIR="$(cd "$(dirname "$0")/../apps/agentsight" && pwd)"
+APP_DIR="$(cd "$(dirname "$0")/../../apps/agentsight" && pwd)"
 LIB_DIR="${APP_DIR}/bin/lib"
 
 # Splunk CLI must run as the splunk boot-start user on systemd installs.

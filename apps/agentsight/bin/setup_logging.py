@@ -7,6 +7,13 @@ import os
 import sys
 
 
+def fix_ssl_cert_file_env() -> None:
+    """Unset SSL_CERT_FILE when Splunk points at a missing bundle (common on Windows)."""
+    cert_file = os.environ.get("SSL_CERT_FILE")
+    if cert_file and not os.path.isfile(cert_file):
+        del os.environ["SSL_CERT_FILE"]
+
+
 def setup_logging(app_name: str) -> logging.Logger:
     """Logs to $SPLUNK_HOME/var/log/splunk/<app_name>.log and stderr (modalert).
 

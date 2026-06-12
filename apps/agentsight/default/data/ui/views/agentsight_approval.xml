@@ -2,7 +2,7 @@
   <label>Approve Actions</label>
   <description>Approve or deny queued agent actions after investigation.</description>
 
-  <fieldset submitButton="true" autoRun="false">
+  <fieldset submitButton="true" autoRun="true">
     <input type="text" token="approve_case_id">
       <label>Case ID</label>
       <default></default>
@@ -21,9 +21,37 @@
 
   <row>
     <panel>
-      <title>Approve / Deny Queued Action</title>
+      <title>Queued actions (click a row to fill Case ID / Action ID, then Submit)</title>
       <table>
         <search>
+          <query>index=agentsight sourcetype="agentsight:case"
+| sort - _time
+| dedup case_id
+| where status="awaiting_approval"
+| eval action_id=if(isnotnull(pending_actions) AND pending_actions!="", mvindex(pending_actions, 0), "action_".case_id)
+| table _time case_id action_id actor trigger_rule status
+| sort - _time</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+          <refresh>60s</refresh>
+        </search>
+        <option name="drilldown">row</option>
+        <drilldown>
+          <set token="form.approve_case_id">$row.case_id$</set>
+          <set token="form.approve_action_id">$row.action_id$</set>
+        </drilldown>
+      </table>
+      <html>
+        <p>If this table is empty, all cases are already approved. Create a new case via <b>Investigate</b> or check the main AgentSight dashboard.</p>
+      </html>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Approve / Deny result</title>
+      <table>
+        <search depends="$approve_case_id$,$approve_action_id$">
           <query>| agentsightapprove case_id="$approve_case_id$" action_id="$approve_action_id$" decision="$approve_decision$" actor="$env:user$"
 | table _time status case_id action_id action_type decision new_case_status tokens_revoked followup_sid message</query>
           <earliest>-1m</earliest>
@@ -31,9 +59,8 @@
         </search>
       </table>
       <html>
-        <p>Copy <code>case_id</code> and <code>action_id</code> from <b>AgentSight</b> dashboard → <i>Pending Agent Actions</i>, then click <b>Submit</b>.</p>
-        <p>Action types: <code>spl</code> runs an approved read-only follow-up; <code>quarantine</code> revokes the MCP agent's Splunk auth tokens and sets the case to <b>contained</b>.</p>
-        <p>Explain in Search: <code>| agentsightexplain case_id=YOUR_ID</code></p>
+        <p>Fill both IDs above and click <b>Submit</b> to run <code>agentsightapprove</code>.</p>
+        <p><code>spl</code> = read-only follow-up; <code>quarantine</code> = revoke MCP agent tokens (use <code>mcp-demo-agent</code> only).</p>
       </html>
     </panel>
   </row>

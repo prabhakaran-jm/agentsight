@@ -4,7 +4,7 @@
 # Community GGUF (Q8_0 ~8.5 GB): https://huggingface.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF
 #
 # Usage:
-#   bash scripts/setup_foundation_sec_ollama.sh
+#   bash scripts/sh/setup_foundation_sec_ollama.sh
 #   export AGENTSIGHT_OLLAMA_CHAT_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
 #   export AGENTSIGHT_AI_MODEL='hf.co/gabriellarson/Foundation-Sec-8B-Instruct-GGUF:Q8_0'
 

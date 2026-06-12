@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Trigger Rule 2 (MCP Index Scope Violation) — severity=critical → quarantine action queued.
-# Use mcp-demo-agent MCP token, NOT admin. See scripts/DEMO_AGENT_SETUP.md
+# Use mcp-demo-agent MCP token, NOT admin. Never approve quarantine on admin.
 
 set -euo pipefail
 
@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "MCP scope violation probe: query index=secrets via splunk_run_query"
 echo "Endpoint: ${SPLUNK_MCP_URL}"
-echo "WARNING: approve quarantine only for non-admin actors (see DEMO_AGENT_SETUP.md)"
+echo "WARNING: approve quarantine only for non-admin actors (use mcp-demo-agent)."
 
 curl -sk -X POST "${SPLUNK_MCP_URL}" \
   -H "Authorization: Bearer ${SPLUNK_MCP_TOKEN}" \

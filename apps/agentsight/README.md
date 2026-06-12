@@ -24,9 +24,9 @@ ln -sf "$(pwd)" /opt/splunk/etc/apps/agentsight
 
 - Splunk Enterprise with MCP Server app (Splunkbase 7931)
 - Splunk AI Toolkit 5.7+ and Python for Scientific Computing
-- Ollama + Foundation-Sec GGUF (`scripts/setup_foundation_sec_ollama.sh`); optional Splunk Cloud clip (Path B)
+- Ollama + Foundation-Sec GGUF (`scripts/sh/setup_foundation_sec_ollama.sh`); optional Splunk Cloud clip (Path B)
 
-See [docs/agentsight-mvp-spec.md](../../docs/agentsight-mvp-spec.md) and [docs/mcp-audit-fieldmap.md](../../docs/mcp-audit-fieldmap.md).
+See repo [README.md](../../README.md) and [architecture_diagram.md](../../architecture_diagram.md).
 
 ## Normalization saved search
 
@@ -63,7 +63,7 @@ To enable automatic normalization every 5 minutes:
 
 ```bash
 export SPLUNK_MCP_TOKEN='your-token'
-bash scripts/demo_mcp_burst.sh
+bash scripts/sh/demo_mcp_burst.sh
 # Then in Splunk Web run: AgentSight - MCP Tool Loop
 ```
 
@@ -71,11 +71,11 @@ bash scripts/demo_mcp_burst.sh
 
 ```bash
 export SPLUNK_MCP_TOKEN='token-for-mcp-demo-agent'
-bash ../../scripts/demo_mcp_scope_violation.sh
+bash scripts/sh/demo_mcp_scope_violation.sh
 # Run: AgentSight - MCP Index Scope Violation
 ```
 
-See [scripts/DEMO_AGENT_SETUP.md](../../scripts/DEMO_AGENT_SETUP.md).
+Never approve **quarantine** on `admin` — use `mcp-demo-agent` only.
 
 ## Agent tools (`bin/tools.py`)
 
@@ -109,7 +109,7 @@ with local tools; on failure it falls back to a scripted investigation loop.
 Install Python dependencies into the app (if `splunklib.ai` is not on the Splunk Python path):
 
 ```bash
-bash ../../scripts/install_agentsight_deps.sh
+bash ../../scripts/sh/install_agentsight_deps.sh
 sudo systemctl restart Splunkd.service
 ```
 
@@ -122,7 +122,7 @@ export AGENTSIGHT_OLLAMA_CHAT_MODEL="llama3.2:latest"
 
 ### Test alert action
 
-1. Run `scripts/demo_mcp_burst.sh`
+1. Run `scripts/sh/demo_mcp_burst.sh`
 2. **Settings → Searches → AgentSight - MCP Tool Loop → Run**
 3. Enable alert action **AgentSight Investigate** on the search → **Trigger Actions**
 4. Verify: `index=agentsight sourcetype=agentsight:case | head 5`
@@ -195,7 +195,7 @@ crisp at 36px via supersampling. To regenerate after a color/glyph change:
 ```bash
 python scripts/build_app_icons.py          # needs Pillow: pip install pillow
 # copy the app to Splunk, then refresh the cached assets:
-#   Windows: Copy-Item -Recurse -Force apps/agentsight/static "C:\Program Files\Splunk\etc\apps\agentsight\"
+#   Windows: Copy-Item -Recurse -Force apps/agentsight/static "D:\splunk\etc\apps\agentsight\"
 sudo -u splunk /opt/splunk/bin/splunk restart   # or restart the Windows Splunkd service
 # then visit http://localhost:8000/en-US/_bump and hard-refresh the browser
 ```

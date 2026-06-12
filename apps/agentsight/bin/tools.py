@@ -117,7 +117,7 @@ def get_alert_context(
     _, mcp_rows = _oneshot_json(ctx, mcp_spl)
 
     norm_spl = (
-        f"index={_INDEX} sourcetype=agentsight:mcp_audit earliest=-1h "
+        f'index={_INDEX} sourcetype="agentsight:mcp_audit" earliest=-1h '
         f"| search mcp_user=\"{_escape_spl_string(actor or '*')}\" "
         "| head 20 "
         "| table _time mcp_user mcp_tool session_id spl_query outcome duration_ms"
@@ -451,13 +451,18 @@ def _investigation_spl_for_rule(trigger_rule: str, actor: str) -> str:
     )
 
 
-def run_scripted_investigation(service: Any, logger: Any, alert_row: dict[str, str]) -> str:
+def run_scripted_investigation(
+    service: Any,
+    logger: Any,
+    alert_row: dict[str, str],
+    case_id: str | None = None,
+) -> str:
     """
     Deterministic investigation loop (<=5 tool equivalents) when the LLM agent
     is unavailable or times out. Returns case_id.
     """
     ctx = SimpleToolContext(service, logger)
-    case_id = new_case_id()
+    case_id = case_id or new_case_id()
     clear_pending_actions(case_id)
 
     trigger_rule = alert_row.get("trigger_rule", "unknown")

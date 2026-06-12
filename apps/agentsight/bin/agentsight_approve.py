@@ -30,7 +30,7 @@ def _utc_now() -> str:
 
 def _load_case(service: Any, case_id: str) -> dict[str, Any] | None:
     spl = (
-        f'search index={_INDEX} sourcetype=agentsight:case case_id="{case_id}" '
+        f'search index={_INDEX} sourcetype="agentsight:case" case_id="{case_id}" '
         "| sort - _time | head 1"
     )
     rows = list(JSONResultsReader(service.jobs.oneshot(spl, output_mode="json")))

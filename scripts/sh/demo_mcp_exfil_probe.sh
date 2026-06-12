@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "MCP exfil probe: splunk_run_query with outputlookup in SPL"
 echo "Endpoint: ${SPLUNK_MCP_URL}"
-echo "Tip: use mcp-demo-agent token for critical-rule demos (see DEMO_AGENT_SETUP.md)"
+echo "Tip: use mcp-demo-agent token for critical-rule demos (never quarantine admin)."
 
 curl -sk -X POST "${SPLUNK_MCP_URL}" \
   -H "Authorization: Bearer ${SPLUNK_MCP_TOKEN}" \

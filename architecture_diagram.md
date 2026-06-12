@@ -101,16 +101,17 @@ agentsight/
 ├── architecture_diagram.md  # this file (Devpost-required filename)
 ├── README.md                # judge quickstart
 ├── LICENSE
-├── scripts/                 # Day 0 + demo helpers
+├── scripts/
+│   ├── sh/                  # bash helpers (Linux / macOS)
+│   ├── ps1/                 # PowerShell helpers (Windows)
+│   └── build_app_icons.py
 └── apps/agentsight/         # Splunk app (install to $SPLUNK_HOME/etc/apps/)
 ```
 
 ## Demo path (video)
 
-1. `scripts/demo_mcp_burst.sh` → hero timeline spikes
+1. `scripts/sh/demo_mcp_burst.sh` → hero timeline spikes
 2. Detection fires → `agentsight_investigate` → case `awaiting_approval`
-3. Dashboard approve → read-only SPL follow-up (or **quarantine** on `mcp-demo-agent` — see `scripts/DEMO_AGENT_SETUP.md`)
+3. Dashboard approve → read-only SPL follow-up (or **quarantine** on `mcp-demo-agent` only — never on `admin`)
 4. `| agentsightexplain case_id=...`
-
-Full checklist: [SUBMISSION_CHECKLIST.md](../SUBMISSION_CHECKLIST.md)
 

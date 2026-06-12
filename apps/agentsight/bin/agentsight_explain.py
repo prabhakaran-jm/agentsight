@@ -13,9 +13,12 @@ _BIN_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BIN_DIR)
 sys.path.insert(0, os.path.join(_BIN_DIR, "lib"))
 
+from setup_logging import fix_ssl_cert_file_env
 from splunklib.results import JSONResultsReader
 from splunklib.searchcommands import Configuration, GeneratingCommand, Option, dispatch
 from pydantic import BaseModel, Field
+
+fix_ssl_cert_file_env()
 
 _INDEX = "agentsight"
 
@@ -56,7 +59,7 @@ def _parse_json_event(row: dict[str, Any]) -> dict[str, Any]:
 
 def _load_case(service: Any, case_id: str) -> dict[str, Any] | None:
     spl = (
-        f'search index={_INDEX} sourcetype=agentsight:case case_id="{case_id}" '
+        f'search index={_INDEX} sourcetype="agentsight:case" case_id="{case_id}" '
         "| sort - _time | head 1"
     )
     rows = [r for r in JSONResultsReader(service.jobs.oneshot(spl, output_mode="json")) if isinstance(r, dict)]
@@ -65,7 +68,7 @@ def _load_case(service: Any, case_id: str) -> dict[str, Any] | None:
 
 def _load_investigation_steps(service: Any, case_id: str) -> list[dict[str, Any]]:
     spl = (
-        f'search index={_INDEX} sourcetype=agentsight:investigation_step case_id="{case_id}" '
+        f'search index={_INDEX} sourcetype="agentsight:investigation_step" case_id="{case_id}" '
         "| sort step_number | head 50"
     )
     steps: list[dict[str, Any]] = []
@@ -99,7 +102,7 @@ def _scripted_explain(case: dict[str, Any], steps: list[dict[str, Any]]) -> Expl
     trigger = case.get("trigger_rule", "unknown")
     suggested = [
         f'index=_internal sourcetype=mcp_server username="{actor}" earliest=-24h | spath | stats count by tool_name',
-        f"index=agentsight sourcetype=agentsight:investigation_step case_id=\"{case.get('case_id', '')}\" | sort step_number",
+        f'index=agentsight sourcetype="agentsight:investigation_step" case_id="{case.get("case_id", "")}" | sort step_number',
     ]
 
     return ExplainOutput(
@@ -181,11 +184,17 @@ class AgentSightExplainCommand(GeneratingCommand):
 
         steps = _load_investigation_steps(service, case_id)
 
-        try:
-            output = asyncio.run(_agent_explain(service, case, steps, self.logger))
-        except Exception as exc:
-            self.logger.warning("agentsight_explain agent failed, using scripted fallback: %s", exc)
+        from demo_mode import scripted_explain_enabled
+
+        if scripted_explain_enabled():
+            self.logger.info("Demo/scripted mode — skipping splunklib.ai explain agent")
             output = _scripted_explain(case, steps)
+        else:
+            try:
+                output = asyncio.run(_agent_explain(service, case, steps, self.logger))
+            except Exception as exc:
+                self.logger.warning("agentsight_explain agent failed, using scripted fallback: %s", exc)
+                output = _scripted_explain(case, steps)
 
         yield {
             "_time": datetime.now().timestamp(),

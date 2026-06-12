@@ -84,11 +84,8 @@ fi
 echo ""
 echo "=== Test in Search (AgentSight app context) ==="
 echo "  Open: http://localhost:8000/en-US/app/agentsight/search"
-echo "  Run:  | agentsightapprove case_id=case_a3d79928 action_id=action_case_a3d79928 decision=approved actor=admin"
+echo "  | agentsightapprove case_id=case_a3d79928 action_id=action_case_a3d79928 decision=approved actor=admin"
 echo ""
-echo "  Or REST: export SPLUNK_PASSWORD=... && bash scripts/test_approve.sh"
-echo ""
-echo "If unknown command 'agentsight' (truncated), you used the old name with underscore."
 echo "Use agentsightapprove / agentsightexplain — not agentsight_approve / agentsight_explain."
 
 echo ""

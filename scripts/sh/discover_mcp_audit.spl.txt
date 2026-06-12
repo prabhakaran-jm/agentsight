@@ -1,7 +1,7 @@
-# AgentSight Day 0 audit discovery queries (run in Splunk Search after MCP activity)
+# MCP audit discovery queries (run in Splunk Search after MCP activity)
 # Query 1 — find any MCP-related sourcetypes
 index=_* OR index=main OR index=_internal OR index=_audit
-  (sourcetype=*mcp* OR source=*mcp* OR "mcp" OR "splunk_run_query" OR "Splunk_MCP" OR agentsight_day0)
+  (sourcetype=*mcp* OR source=*mcp* OR "mcp" OR "splunk_run_query" OR "Splunk_MCP" OR agentsight_smoke)
   earliest=-15m
 | head 50
 | table _time index sourcetype source user username action info search
@@ -18,5 +18,5 @@ index=_internal sourcetype=splunkd_access "Splunk_MCP_Server"
 
 # Query 4 — audittrail SPL text
 index=_audit sourcetype=audittrail action=search (info=completed OR info=granted)
-| search search=*splunk_run_query* OR search=*agentsight_day0* OR search=*makeresults*
+| search search=*splunk_run_query* OR search=*agentsight_smoke* OR search=*makeresults*
 | table _time user action info search
